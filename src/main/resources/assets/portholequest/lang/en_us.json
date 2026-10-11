@@ -1,0 +1,13 @@
+{
+  "itemGroup.portholequest": "Example Mod Tab",
+  "block.portholequest.example_block": "Example Block",
+  "item.portholequest.example_item": "Example Item",
+
+  "portholequest.configuration.title": "Porthole Quest Configs",
+  "portholequest.configuration.section.portholequest.common.toml": "Porthole Quest Configs",
+  "portholequest.configuration.section.portholequest.common.toml.title": "Porthole Quest Configs",
+  "portholequest.configuration.items": "Item List",
+  "portholequest.configuration.logDirtBlock": "Log Dirt Block",
+  "portholequest.configuration.magicNumberIntroduction": "Magic Number Text",
+  "portholequest.configuration.magicNumber": "Magic Number"
+}
