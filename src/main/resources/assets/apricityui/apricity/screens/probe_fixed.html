@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+    <meta name="aui-viewport" content="mode=fixed,width=427,height=240,scale=gui,zoom=1,min-zoom=1,max-zoom=1,user-scalable=false">
+    <meta name="aui-mouse-events" content="intercept">
+    <link rel="stylesheet" href="../css/probe.css">
+    <link rel="stylesheet" href="../css/probe_fixed.css">
+</head>
+<body>
+<main class="fixed-frame">
+    <h1>Fixed 427x240 | Frame 336x208 | Paper 320x192</h1>
+    <p id="scale-status">Scale metrics pending</p>
+
+    <div class="texture-samples">
+        <div><texture class="sample-16" src="minecraft:textures/item/diamond.png" blur="false" /><p>16 CSS px</p></div>
+        <div><texture class="sample-32" src="minecraft:textures/item/diamond.png" blur="false" /><p>32 CSS px</p></div>
+    </div>
+    <div class="native-reference-space"></div>
+    <div class="pixel-steps">
+        <i class="step-1"></i><i class="step-2"></i><i class="step-4"></i><i class="step-8"></i>
+        <span>1 / 2 / 4 / 8 CSS px</span>
+    </div>
+
+    <div class="fixed-buttons">
+        <button id="click-test">Click</button>
+        <button id="update-test">DOM</button>
+        <button id="refresh-test">Refresh</button>
+    </div>
+    <input id="key-test" type="text" placeholder="Keyboard test">
+    <p id="click-status">Mouse click callbacks: 0</p>
+    <p id="java-status">Java DOM update pending</p>
+    <p id="bind-status">Waiting for Java binding</p>
+    <p id="key-status">Keyboard callbacks: 0</p>
+</main>
+</body>
+</html>

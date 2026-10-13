@@ -1,0 +1,106 @@
+/* Integer origin: 45px left + 336px frame + 46px right = 427px viewport. */
+body {
+    padding: 0;
+    width: 427px;
+    height: 240px;
+    font-size: 9px;
+}
+
+.fixed-frame {
+    position: absolute;
+    left: 45px;
+    top: 16px;
+    width: 336px;
+    height: 208px;
+    padding: 0;
+    border: 8px solid #bb854b;
+    background: #e7d9b7;
+}
+
+.fixed-frame h1 {
+    position: absolute;
+    left: 8px;
+    top: 6px;
+    font-size: 10px;
+}
+
+.fixed-frame #scale-status {
+    position: absolute;
+    left: 8px;
+    top: 22px;
+    width: 304px;
+    height: 28px;
+    overflow: hidden;
+    font-size: 8px;
+}
+
+.fixed-frame .texture-samples {
+    position: absolute;
+    left: 8px;
+    top: 56px;
+    margin: 0;
+}
+
+.fixed-frame .texture-samples p {
+    font-size: 9px;
+}
+
+/* Java draws the independent Minecraft reference here, at (261, 80). */
+.native-reference-space {
+    position: absolute;
+    left: 208px;
+    top: 56px;
+    width: 104px;
+    height: 50px;
+}
+
+.fixed-frame .pixel-steps {
+    position: absolute;
+    left: 8px;
+    top: 98px;
+    margin: 0;
+}
+
+.fixed-frame .pixel-steps span {
+    font-size: 9px;
+}
+
+.fixed-buttons {
+    position: absolute;
+    left: 8px;
+    top: 119px;
+}
+
+.fixed-frame button, .fixed-frame input {
+    min-height: 18px;
+    height: 18px;
+    padding: 2px 4px;
+    margin: 0 3px 0 0;
+    font-size: 9px;
+}
+
+.fixed-frame #key-test {
+    position: absolute;
+    left: 208px;
+    top: 119px;
+    width: 104px;
+}
+
+.fixed-frame #click-status, .fixed-frame #java-status, .fixed-frame #bind-status {
+    position: absolute;
+    left: 8px;
+    width: 196px;
+    font-size: 8px;
+}
+
+.fixed-frame #click-status { top: 144px; }
+.fixed-frame #java-status { top: 158px; }
+.fixed-frame #bind-status { top: 172px; }
+
+.fixed-frame #key-status {
+    position: absolute;
+    left: 208px;
+    top: 144px;
+    width: 104px;
+    font-size: 8px;
+}

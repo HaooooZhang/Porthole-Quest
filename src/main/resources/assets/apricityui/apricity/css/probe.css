@@ -1,0 +1,166 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 12px;
+    background: #17343a;
+    color: #213036;
+    /* ApricityUI 1.2.7: unresolved (unset) family uses Minecraft.font. */
+    font-family: unset;
+}
+
+.sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 520px;
+    min-height: 100%;
+    margin: 0 auto;
+    padding: 12px;
+    border: 3px solid #bb854b;
+    background: #e7d9b7;
+}
+
+.heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding-bottom: 7px;
+    border-bottom: 2px solid #58716c;
+}
+
+.journal-texture {
+    display: block;
+    width: 32px;
+    height: 32px;
+}
+
+h1, h2, p, ol {
+    margin: 0;
+}
+
+h1 {
+    font-size: 18px;
+}
+
+h2 {
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.heading p, .controls p, .input-test p {
+    font-size: 11px;
+}
+
+.controls, .input-test, .scroll-test, .pixel-test {
+    padding: 7px;
+    border: 1px solid #879082;
+    background: #f1e8d2;
+}
+
+button, input {
+    min-height: 24px;
+    margin: 0 3px 4px 0;
+    padding: 3px 6px;
+    border: 1px solid #36585a;
+    background: #d3e0d2;
+    color: #17282b;
+    font-family: unset;
+    font-size: 11px;
+}
+
+button:active {
+    background: #b8ceb9;
+}
+
+input {
+    width: 100%;
+    background: #fffaf0;
+}
+
+label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+}
+
+.controls p, .input-test p {
+    min-height: 14px;
+    margin-top: 2px;
+}
+
+.scroll-test ol {
+    height: 82px;
+    overflow-y: auto;
+    padding-left: 24px;
+    border: 1px solid #a8ad9a;
+    background: #fffaf0;
+}
+
+.scroll-test li {
+    min-height: 21px;
+    padding: 3px 2px;
+    border-bottom: 1px solid #ded6c2;
+    font-size: 11px;
+}
+
+.pixel-test h2 {
+    margin-bottom: 4px;
+}
+
+#scale-status, .texture-samples p, .pixel-test > p {
+    font-size: 10px;
+}
+
+.texture-samples {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 6px 0;
+}
+
+.texture-samples > div {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sample-16 {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.sample-32 {
+    display: block;
+    width: 32px;
+    height: 32px;
+}
+
+.pixel-steps {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 16px;
+    margin-top: 4px;
+}
+
+.pixel-steps i {
+    display: block;
+    height: 12px;
+    background: #b6533d;
+}
+
+.step-1 { width: 1px; }
+.step-2 { width: 2px; }
+.step-4 { width: 4px; }
+.step-8 { width: 8px; }
+
+.pixel-steps span {
+    margin-left: 3px;
+    font-size: 10px;
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+    <meta name="aui-viewport" content="mode=browser,zoom=1,min-zoom=1,max-zoom=1,user-scalable=false">
+    <meta name="aui-mouse-events" content="intercept">
+    <link rel="stylesheet" href="../css/probe.css">
+</head>
+<body>
+<main class="sheet">
+    <section class="pixel-test">
+        <h2>Vanilla texture and GUI Scale</h2>
+        <p id="scale-status">Scale metrics pending</p>
+        <div class="texture-samples">
+            <div><texture class="sample-16" src="minecraft:textures/item/diamond.png" blur="false" /><p>16 CSS px</p></div>
+            <div><texture class="sample-32" src="minecraft:textures/item/diamond.png" blur="false" /><p>32 CSS px</p></div>
+        </div>
+        <p>CSS pixel steps</p>
+        <div class="pixel-steps">
+            <i class="step-1"></i><i class="step-2"></i><i class="step-4"></i><i class="step-8"></i>
+            <span>1 | 2 | 4 | 8 CSS px</span>
+        </div>
+    </section>
+    <header class="heading">
+        <texture class="journal-texture" src="portholequest:textures/item/quest_journal.png" />
+        <div>
+            <h1>ApricityUI Probe</h1>
+            <p>R0.1 | Java 21 | ApricityUI 1.2.7</p>
+        </div>
+    </header>
+
+    <section class="controls">
+        <button id="click-test">Click test</button>
+        <button id="update-test">Java DOM update</button>
+        <button id="refresh-test">Document refresh</button>
+        <p id="click-status">Mouse click callbacks: 0</p>
+        <p id="java-status">Java DOM update pending</p>
+        <p id="bind-status">Waiting for Java binding</p>
+    </section>
+
+    <section class="input-test">
+        <label for="key-test">Type here to test keyboard input</label>
+        <input id="key-test" type="text" placeholder="Keyboard events are counted by Java">
+        <p id="key-status">Keyboard callbacks: 0</p>
+    </section>
+
+    <section class="scroll-test">
+        <h2>Scrollable list</h2>
+        <ol>
+            <li>Scroll item 01</li><li>Scroll item 02</li><li>Scroll item 03</li>
+            <li>Scroll item 04</li><li>Scroll item 05</li><li>Scroll item 06</li>
+            <li>Scroll item 07</li><li>Scroll item 08</li><li>Scroll item 09</li>
+            <li>Scroll item 10</li><li>Scroll item 11</li><li>Scroll item 12</li>
+        </ol>
+    </section>
+
+
+</main>
+</body>
+</html>
