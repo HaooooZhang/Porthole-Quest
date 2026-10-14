@@ -22,10 +22,15 @@ ink.myumoon.portholequest
 ├── registry
 │   ├── PQRegistries
 │   └── PQItems
+├── item            # shared journal item; emits client open intent without Screen imports
+├── event           # shared open-intent event consumed by the physical-client entrypoint
+├── ftbq           # FTBQ adapter boundary; client adapters load only from client entrypoints
+│   ├── FtbqBridge
+│   ├── FtbqActionDispatcher
+│   └── FtbqStateWatcher
+├── model          # immutable, UI-independent QuestLogSnapshot records
 └── client
     ├── input       # independent J, X, and Space key mappings
-    ├── ftbq        # FtbqBridge, FtbqActionDispatcher, FtbqStateWatcher
-    ├── model       # immutable, UI-independent QuestLogSnapshot records
     ├── session     # GuiSessionCache for the current world session
     ├── screen      # PortholeQuestScreen, ScreenViewState, ScreenStateHistory
     ├── sync        # QuestLogRefreshCoordinator
@@ -48,15 +53,15 @@ Use logical ApricityUI paths such as `screens/quest_log.html` in Java. Keep auth
 
 ## Dependency Direction and Ownership
 
-- `client.screen` and `client.ui` may depend on `client.model`; they must not depend on FTBQ types.
-- `client.ftbq` may depend on `client.model` to produce snapshots and accept semantic actions; it must not depend on screen or DOM classes.
+- `client.screen` and `client.ui` may depend on `model`; they must not depend on FTBQ types.
+- `ftbq` may depend on `model` to produce snapshots and accept semantic actions; it must not depend on screen or DOM classes.
 - `client.session` stores UI-independent identifiers and primitive state. Keep it independent from FTBQ and ApricityUI.
 - `client.sync` coordinates snapshot refresh and state restoration through narrow interfaces. Do not introduce a package cycle to connect the screen and FTBQ adapter.
 - Entrypoints and input handlers forward lifecycle or user intent to the owning client component; they do not implement quest or presentation logic.
 
-- `client.ftbq` is the only package that reads FTBQ client quest objects, `TeamData`, or sends FTBQ action messages.
+- `ftbq` is the only package that reads FTBQ client quest objects, `TeamData`, or sends FTBQ action messages. This top-level location was requested by the user; it does not make adapters that import `ClientQuestFile` server-loadable. Load those adapters only from physical-client entrypoints. FTBQ itself owns server-side action handlers.
 - `FtbqBridge` reads authoritative FTBQ state and produces immutable snapshots. It does not mutate FTBQ data.
-- `client.model` contains no FTBQ classes and no ApricityUI DOM objects.
+- `model` contains no FTBQ classes and no ApricityUI DOM objects.
 - `FtbqActionDispatcher` accepts semantic actions and sends FTBQ's native submit, claim, or tracking messages. Do not implement optimistic completion or duplicate server rules.
 - `PortholeQuestScreen` owns the active view and delegates rendering, navigation, refresh, and actions. Use one Minecraft `Screen`; details and popups are internal view states.
 - `client.ui` renders snapshots and view state. DOM nodes and listeners are reacquired after document refresh; they are not long-lived state.
@@ -66,7 +71,7 @@ Use logical ApricityUI paths such as `screens/quest_log.html` in Java. Keep auth
 
 ## Implementation Order
 
-Follow the design's runnable slices; each slice must compile, launch, and have its stated evidence before expanding scope.
+Follow the design's R roadmap stages for scope and completion criteria. B blocks describe implementation responsibilities and dependencies within those stages, rather than a second milestone sequence. Each stage must compile, launch, and have its stated evidence before expanding scope. The block order below guides implementation without expanding the current R stage to all work in a block.
 
 1. **R0.1 ApricityUI probe:** build a development-only page and verify the actual `ApricityScreen` host, resource paths, texture rendering, layout, scroll, input interception, Java DOM updates, resize/refresh behavior, and listener rebinding in-game. Record limitations. Do not add a Gradle module or ship the probe as player functionality.
 2. **B1 entry and client lifecycle:** shared journal item registration and right-click entry, client key mappings, shared open preconditions, pause behavior, and world/disconnect cleanup.
@@ -77,7 +82,7 @@ Follow the design's runnable slices; each slice must compile, launch, and have i
 7. **B6 FTBQ actions and refresh:** task submit, reward claim, tracking, pending state, authoritative refresh, and replacement handling.
 8. **B7 assets and runtime validation:** final textures, pixel scaling, window sizes, multiplayer and regression scenarios, and Gate evidence.
 
-R0.1 was accepted on 2026-10-13. Proceed through B1 before B2 when the user starts the next slice. Retain `client.probe` and its resources for future development tests; keep command registration behind `!FMLEnvironment.production`. Consult `docs/implementation/r0.1-apricityui-probe.md` when changing AUI hosting, input, refresh, scaling, or fonts. Use placeholders before final art and verify each slice with the pinned dependencies.
+R0.1 was accepted on 2026-10-13. The next roadmap stage is R1: required B1 entry/lifecycle work, B2 readiness/immutable snapshots, and a minimal static list/Blank Detail Screen. Defer full filtering, navigation, and actions to their R stages. Retain `client.probe` and its resources for future development tests; keep command registration behind `!FMLEnvironment.production`. Consult `docs/implementation/r0.1-apricityui-probe.md` when changing AUI hosting, input, refresh, scaling, or fonts. Use placeholders before final art and verify each slice with the pinned dependencies.
 
 ## Non-Negotiable Behavior
 
@@ -103,4 +108,4 @@ R0.1 was accepted on 2026-10-13. Proceed through B1 before B2 when the user star
 
 ## Current Entry Point
 
-R0 and R0.1 are complete; the overall formal design remains `in-design`, not Gate-approved. The next implementation slice is B1 entry and client lifecycle. Preserve the accepted probe as a reusable development tool. CSS background textures, nine-slice seams, final centering/clipping, and final-art regression are follow-up resource checks recorded in the R0.1 report.
+R0 and R0.1 are complete; the overall formal design remains `in-design`, not Gate-approved. R1 is in progress: the read-only bridge, detached list snapshot, shared J/item opening path, and static list/Blank Detail Screen compile and run. Positive entry/list behavior has user and log evidence; missing/loading/locked rejection remains pending. Consult `docs/implementation/r1-data-bridge.md` before extending R1 or declaring it complete. Preserve the accepted probe as a reusable development tool. CSS background textures, nine-slice seams, final centering/clipping, and final-art regression are follow-up resource checks recorded in the R0.1 report.

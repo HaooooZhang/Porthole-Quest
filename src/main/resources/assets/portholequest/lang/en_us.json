@@ -1,3 +1,13 @@
 {
-  "item.portholequest.quest_journal": "Quest Journal"
+  "item.portholequest.quest_journal": "Quest Journal",
+  "key.categories.portholequest": "Porthole Quest",
+  "key.portholequest.open": "Open Quest Journal",
+  "key.portholequest.flowchart": "Quest Flowchart",
+  "key.portholequest.track": "Track Quest",
+  "message.portholequest.missing_quests": "Quest data is unavailable. Try again after synchronization.",
+  "message.portholequest.loading_team": "Team quest data is still loading. Please try again shortly.",
+  "message.portholequest.locked": "Your team's quest data is locked.",
+  "message.portholequest.open_failed": "Unable to open the quest journal. See the log for details.",
+  "ui.portholequest.blank_title": "Quest Journal",
+  "ui.portholequest.empty_list": "No visible quests"
 }

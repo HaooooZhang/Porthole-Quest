@@ -1,3 +1,13 @@
 {
-  "item.portholequest.quest_journal": "任务日志"
+  "item.portholequest.quest_journal": "任务日志",
+  "key.categories.portholequest": "舷窗任务",
+  "key.portholequest.open": "打开任务日志",
+  "key.portholequest.flowchart": "任务流程图",
+  "key.portholequest.track": "追踪任务",
+  "message.portholequest.missing_quests": "任务数据尚未就绪，请在同步完成后重试。",
+  "message.portholequest.loading_team": "队伍任务数据正在加载，请稍后重试。",
+  "message.portholequest.locked": "当前队伍的任务数据已锁定。",
+  "message.portholequest.open_failed": "任务日志打开失败，请查看日志。",
+  "ui.portholequest.blank_title": "任务日志",
+  "ui.portholequest.empty_list": "暂无可见任务"
 }

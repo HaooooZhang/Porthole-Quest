@@ -1,0 +1,54 @@
+* { box-sizing: border-box; user-select: none; }
+html, body {
+    width: 336px;
+    height: 208px;
+    overflow: hidden;
+}
+body {
+    margin: 0;
+    padding: 0;
+    font-family: unset;
+    font-size: 9px;
+    color: #423027;
+}
+/* 336x208 outer frame, 8px border, 320x192 paper. Integer CSS coordinates. */
+#journal-frame {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 336px;
+    height: 208px;
+    padding: 0;
+    border: 8px solid #885039;
+    background: #e7d9b7;
+    overflow: hidden;
+}
+#chapter-list {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 120px;
+    height: 192px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #dac9a4;
+}
+#blank-detail {
+    position: absolute;
+    left: 128px;
+    top: 0;
+    width: 192px;
+    height: 192px;
+    padding: 12px;
+    overflow: hidden;
+}
+#blank-title { margin-top: 72px; text-align: center; color: #a79779; }
+.group-row, .chapter-row, .quest-row, .empty-row {
+    min-height: 16px;
+    padding: 3px 4px;
+    word-break: break-all;
+}
+.group-row { background: #bda57f; }
+.chapter-row { padding-left: 8px; background: #d0bb95; }
+.quest-row { padding-left: 12px; border-bottom: 1px solid #c7b58f; }
+.link-row { color: #4c6660; }
