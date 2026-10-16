@@ -2,31 +2,76 @@ package ink.myumoon.portholequest.client.ui;
 
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import com.sighs.apricityui.event.MouseEvent;
+import ink.myumoon.portholequest.model.ListFilter;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.network.chat.Component;
 
-/** R1 static, all-expanded text projection. Selection and full list behavior belong to R2. */
+import java.util.Map;
+import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.LongConsumer;
+
+/** R2 list projection. Detail navigation is added by the later read-only block. */
 public final class QuestLogView {
     private QuestLogView() {}
 
-    public static void render(Document document, QuestLogSnapshot snapshot) {
-        Element list = require(document, "#chapter-list");
+    public static void render(Document document, List<QuestLogSnapshot.Group> groups, String groupTitle, ListFilter filter,
+                              Map<Long, Boolean> expanded, boolean defaultExpanded,
+                              BooleanSupplier currentBinding, Consumer<ListFilter> changeFilter,
+                              LongConsumer toggleChapter) {
+        Element list = require(document, "#list-entries");
+        Element switches = require(document, "#list-switches");
         Element blankTitle = require(document, "#blank-title");
         list.replaceChildren();
+        // Replacing controls also discards their old listeners on snapshot/DOM rebuild.
+        switches.replaceChildren();
+        require(document, "#list-heading").setTextContent(groupTitle);
         blankTitle.setTextContent(Component.translatable("ui.portholequest.blank_title").getString());
 
-        if (snapshot.groups().isEmpty()) {
+        for (ListFilter mode : ListFilter.values()) {
+            Element button = append(document, switches, "filter-button" + (filter == mode ? " selected" : ""),
+                    Component.translatable("ui.portholequest.filter." + mode.name().toLowerCase(java.util.Locale.ROOT)).getString(), 0);
+            button.setAttribute("id", "filter-" + mode.name().toLowerCase(java.util.Locale.ROOT));
+            button.setAttribute("role", "button");
+            button.setAttribute("aria-pressed", Boolean.toString(filter == mode));
+            button.addEventListener("click", event -> {
+                if (currentBinding.getAsBoolean() && event instanceof MouseEvent mouse && mouse.button == 0) changeFilter.accept(mode);
+            });
+        }
+
+        if (groups.isEmpty()) {
             append(document, list, "empty-row", Component.translatable("ui.portholequest.empty_list").getString(), 0);
             return;
         }
-        for (var group : snapshot.groups()) {
-            append(document, list, "group-row", group.title(), group.id());
+        for (var group : groups) {
             for (var chapter : group.chapters()) {
-                append(document, list, "chapter-row", chapter.title(), chapter.id());
+                boolean open = expanded.getOrDefault(chapter.id(), defaultExpanded);
+                Element chapterRow = append(document, list, "chapter-row", "", chapter.id());
+                chapterRow.setAttribute("data-chapter-id", Long.toUnsignedString(chapter.id(), 16));
+                chapterRow.setAttribute("aria-expanded", Boolean.toString(open));
+                append(document, chapterRow, "row-marker expand-marker", open ? "-" : "+", 0);
+                append(document, chapterRow, "chapter-title", chapter.title(), 0);
+                chapterRow.addEventListener("click", event -> {
+                    if (currentBinding.getAsBoolean() && event instanceof MouseEvent mouse && mouse.button == 0) toggleChapter.accept(chapter.id());
+                });
+                if (!open) continue;
                 for (var entry : chapter.entries()) {
-                    Element row = append(document, list, entry.link() ? "quest-row link-row" : "quest-row", entry.title(), entry.entryId());
+                    Element row = append(document, list, "quest-row", "", entry.entryId());
                     row.setAttribute("data-quest-id", Long.toUnsignedString(entry.questId(), 16));
                     row.setAttribute("data-chapter-id", Long.toUnsignedString(entry.chapterId(), 16));
+                    String state = entry.completed() ? (entry.unclaimedRewards() ? "reward" : "complete")
+                            : (entry.canStart() ? "available" : "locked");
+                    row.setAttribute("data-state", state);
+                    String marker = switch (state) {
+                        case "reward" -> "!";
+                        case "complete" -> "*";
+                        case "available" -> ">";
+                        default -> "x";
+                    };
+                    append(document, row, "row-marker state-" + state, marker, 0);
+                    append(document, row, "quest-title", entry.title(), 0);
                 }
             }
         }
@@ -38,8 +83,9 @@ public final class QuestLogView {
         row.setAttribute("data-entry-id", Long.toUnsignedString(id, 16));
         // Plain text avoids interpreting quest titles as markup or script.
         row.setTextContent(text);
-        parent.appendChild(row);
-        return row;
+        // AUI may replace a generic Element with its registered DIV implementation.
+        // Children, attributes and listeners must target the returned attached node.
+        return parent.appendChild(row);
     }
 
     private static Element require(Document document, String selector) {

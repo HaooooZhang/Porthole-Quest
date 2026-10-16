@@ -20,7 +20,8 @@ public record QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGa
                 .mapToInt(chapter -> chapter.entries().size()).sum();
     }
 
-    public record Group(long id, String title, List<Chapter> chapters) {
+    /** File order precedes visibility/filter projection, keeping a group's tab color stable. */
+    public record Group(long id, String title, int fileOrder, List<Chapter> chapters) {
         public Group {
             Objects.requireNonNull(title);
             chapters = List.copyOf(chapters);

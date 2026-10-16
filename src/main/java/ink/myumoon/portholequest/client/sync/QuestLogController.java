@@ -1,8 +1,10 @@
 package ink.myumoon.portholequest.client.sync;
 
 import ink.myumoon.portholequest.PortholeQuest;
+import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.client.input.PortholeKeyMappings;
 import ink.myumoon.portholequest.client.screen.PortholeQuestScreen;
+import ink.myumoon.portholequest.client.session.GuiSessionCache;
 import ink.myumoon.portholequest.event.QuestJournalOpenEvent;
 import ink.myumoon.portholequest.ftbq.FtbqBridge;
 import ink.myumoon.portholequest.model.QuestLogReadResult;
@@ -15,6 +17,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 public final class QuestLogController {
     private final FtbqBridge bridge;
     private int refreshTicks;
+    private final GuiSessionCache session = new GuiSessionCache();
 
     public QuestLogController(FtbqBridge bridge) {
         this.bridge = bridge;
@@ -31,6 +34,7 @@ public final class QuestLogController {
             bridge.reset();
             refreshTicks = 0;
             if (minecraft.screen instanceof PortholeQuestScreen) minecraft.setScreen(null);
+            session.clear();
             return;
         }
         if (!(minecraft.screen instanceof PortholeQuestScreen screen)) {
@@ -50,7 +54,7 @@ public final class QuestLogController {
             }
             var snapshot = result.snapshot().orElseThrow();
             if (!screen.hasFileGeneration(snapshot.fileGeneration())) {
-                activeScreen = new PortholeQuestScreen(snapshot);
+                activeScreen = new PortholeQuestScreen(snapshot, screen.captureListState(), session::save);
                 minecraft.setScreen(activeScreen);
                 PortholeQuest.LOGGER.info("[PortholeQuest R1] Rebuilt Screen fileGeneration={}", snapshot.fileGeneration());
             } else {
@@ -72,7 +76,8 @@ public final class QuestLogController {
                 return;
             }
             var snapshot = result.snapshot().orElseThrow();
-            screen = new PortholeQuestScreen(snapshot);
+            screen = new PortholeQuestScreen(snapshot,
+                    session.restore(Config.DEFAULT_LIST_FILTER.get(), Config.DEFAULT_CHAPTER_EXPANDED.get()), session::save);
             minecraft.setScreen(screen);
             refreshTicks = 0;
             PortholeQuest.LOGGER.info("[PortholeQuest R1] Open source={} fileGeneration={} team={} groups={} chapters={} entries={} pauseGame={}",
@@ -112,5 +117,7 @@ public final class QuestLogController {
         refreshTicks = 0;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen instanceof PortholeQuestScreen) minecraft.setScreen(null);
+        // removed() saves the old view, so clearing must happen after closing it.
+        session.clear();
     }
 }

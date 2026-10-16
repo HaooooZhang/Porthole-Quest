@@ -6,9 +6,11 @@ import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import ink.myumoon.portholequest.model.QuestLogReadResult;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
+import ink.myumoon.portholequest.model.ChapterEntryOrder;
 import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
 
 import static ink.myumoon.portholequest.model.QuestLogReadResult.State;
@@ -45,33 +47,51 @@ public final class FtbqBridge {
 
         UUID playerId = minecraft.player.getUUID();
         var groups = new ArrayList<QuestLogSnapshot.Group>();
+        int groupIndex = 0;
         for (var group : file.getChapterGroups()) {
+            int fileOrder = groupIndex++;
             if (!group.isValid() || !group.isVisible(data)) continue;
             var chapters = new ArrayList<QuestLogSnapshot.Chapter>();
             for (Chapter chapter : group.getVisibleChapters(data)) {
                 // Editor privileges must not reveal content hidden from the journal's player view.
                 if (!chapter.isValid() || !chapter.isVisible(data) || !chapter.hasAnyVisibleChildren()) continue;
-                var entries = new ArrayList<QuestLogSnapshot.Entry>();
+                var definitions = new ArrayList<ChapterEntryOrder.Definition>();
+                var visibleEntries = new HashMap<Long, QuestLogSnapshot.Entry>();
                 for (Quest quest : chapter.getQuests()) {
-                    if (quest.isValid() && quest.isVisible(data)) {
-                        entries.add(entry(quest.id, chapter.id, quest, false, data, playerId));
+                    if (!quest.isValid()) continue;
+                    definitions.add(definition(quest.id, quest));
+                    if (quest.isVisible(data)) {
+                        visibleEntries.put(quest.id, entry(quest.id, chapter.id, quest, false, data, playerId));
                     }
                 }
                 for (var link : chapter.getQuestLinks()) {
-                    if (!link.isValid() || !link.isVisible(data)) continue;
-                    link.getQuest().filter(quest -> quest.isValid() && quest.isVisible(data))
-                            .ifPresent(quest -> entries.add(entry(link.id, chapter.id, quest, true, data, playerId)));
+                    if (!link.isValid()) continue;
+                    link.getQuest().filter(Quest::isValid).ifPresent(quest -> {
+                        definitions.add(definition(link.id, quest));
+                        if (link.isVisible(data) && quest.isVisible(data)) {
+                            visibleEntries.put(link.id, entry(link.id, chapter.id, quest, true, data, playerId));
+                        }
+                    });
                 }
+                var entries = ChapterEntryOrder.sort(definitions).stream()
+                        .map(definition -> visibleEntries.get(definition.entryId()))
+                        .filter(java.util.Objects::nonNull).toList();
                 if (!entries.isEmpty()) {
                     chapters.add(new QuestLogSnapshot.Chapter(chapter.id, group.id,
                             chapter.getTitle().getString(), entries));
                 }
             }
             if (!chapters.isEmpty()) {
-                groups.add(new QuestLogSnapshot.Group(group.id, group.getTitle().getString(), chapters));
+                groups.add(new QuestLogSnapshot.Group(group.id, group.getTitle().getString(), fileOrder, chapters));
             }
         }
         return QuestLogReadResult.ready(new QuestLogSnapshot(fileGeneration, data.getTeamId(), file.isPauseGame(), groups));
+    }
+
+    private static ChapterEntryOrder.Definition definition(long entryId, Quest quest) {
+        // Non-Quest dependencies still govern FTBQ unlocks, but do not create list rows.
+        return new ChapterEntryOrder.Definition(entryId, quest.id,
+                quest.streamDependencies().filter(Quest.class::isInstance).map(dependency -> dependency.id).toList());
     }
 
     private static QuestLogSnapshot.Entry entry(long entryId, long chapterId, Quest quest, boolean link,

@@ -9,5 +9,8 @@
   "message.portholequest.locked": "Your team's quest data is locked.",
   "message.portholequest.open_failed": "Unable to open the quest journal. See the log for details.",
   "ui.portholequest.blank_title": "Quest Journal",
-  "ui.portholequest.empty_list": "No visible quests"
+  "ui.portholequest.empty_list": "No visible quests",
+  "ui.portholequest.filter.all": "All",
+  "ui.portholequest.filter.completed": "Done",
+  "ui.portholequest.filter.active": "Active"
 }

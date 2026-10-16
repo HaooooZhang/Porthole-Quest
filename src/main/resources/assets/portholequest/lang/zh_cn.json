@@ -9,5 +9,8 @@
   "message.portholequest.locked": "当前队伍的任务数据已锁定。",
   "message.portholequest.open_failed": "任务日志打开失败，请查看日志。",
   "ui.portholequest.blank_title": "任务日志",
-  "ui.portholequest.empty_list": "暂无可见任务"
+  "ui.portholequest.empty_list": "暂无可见任务",
+  "ui.portholequest.filter.all": "全部",
+  "ui.portholequest.filter.completed": "已完成",
+  "ui.portholequest.filter.active": "进行中"
 }

@@ -12,10 +12,21 @@ import com.sighs.apricityui.screen.ApricityScreen;
 import com.sighs.apricityui.style.Cursor;
 import ink.myumoon.portholequest.PortholeQuest;
 import ink.myumoon.portholequest.client.ui.QuestLogView;
+import ink.myumoon.portholequest.client.ui.ChapterGroupTabView;
+import ink.myumoon.portholequest.model.ChapterGroupTabs;
+import ink.myumoon.portholequest.model.GroupSelection;
+import ink.myumoon.portholequest.client.session.GuiSessionCache.ListState;
+import ink.myumoon.portholequest.model.ListFilter;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.List;
+import java.util.function.Consumer;
 
 public final class PortholeQuestScreen extends ApricityScreen {
     private QuestLogSnapshot snapshot;
@@ -24,15 +35,35 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private int frameLeft;
     private int frameTop;
     private Position previousMouse;
+    private ListFilter filter;
+    private final boolean defaultExpanded;
+    private final Map<Long, Boolean> expanded;
+    private final Consumer<ListState> saveState;
+    private double listScroll;
+    private boolean listDirty;
+    private long bindingVersion;
+    private GroupSelection requestedGroup;
+    private GroupSelection effectiveGroup = GroupSelection.ALL;
+    private List<ChapterGroupTabs.Slot> tabs = List.of();
+    private ChapterGroupTabs.Slot pressedTab;
 
-    public PortholeQuestScreen(QuestLogSnapshot snapshot) {
+    public PortholeQuestScreen(QuestLogSnapshot snapshot, ListState state, Consumer<ListState> saveState) {
         super("screens/quest_log.html");
         this.snapshot = snapshot;
+        this.filter = state.filter();
+        this.defaultExpanded = state.defaultExpanded();
+        this.expanded = new HashMap<>(state.expanded());
+        this.listScroll = state.scrollTop();
+        this.saveState = saveState;
+        this.requestedGroup = state.group().retainValid(snapshot);
+        this.effectiveGroup = this.requestedGroup;
+        pruneChapterState();
         setPauseGame(snapshot.pauseGame());
     }
 
     @Override
     protected void init() {
+        captureListScroll();
         super.init();
         bindCurrentDocument();
     }
@@ -88,6 +119,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (tabAt(mouseX, mouseY) != null) return true;
         MouseEvent event = pointerEvent("wheel", mouseX, mouseY, -1);
         // Match the pinned AUI wheel step; zoom is disabled by the journal viewport.
         event.deltaY = event.scrollDelta = -scrollY * 50;
@@ -97,11 +129,24 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        var tab = tabAt(mouseX, mouseY);
+        if (tab != null) {
+            if (button == 0) pressedTab = tab;
+            return true;
+        }
         return dispatchPointer(pointerEvent("mousedown", mouseX, mouseY, button));
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && pressedTab != null) {
+            var pressed = pressedTab;
+            pressedTab = null;
+            var tab = tabAt(mouseX, mouseY);
+            if (pressed.equals(tab)) changeGroup(tab.selection());
+            return true;
+        }
+        if (tabAt(mouseX, mouseY) != null) return true;
         return dispatchPointer(pointerEvent("mouseup", mouseX, mouseY, button));
     }
 
@@ -125,6 +170,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
         try {
             if (isShowDefaultBackground()) renderBackground(graphics, mouseX, mouseY, partialTick);
             Document document = getLinkedDocument();
+            float tabScale = document == null ? 1 : document.getViewport().renderScale();
+            for (var tab : tabs) if (!tab.selection().equals(effectiveGroup)) {
+                ChapterGroupTabView.draw(graphics, tab, false, frameLeft, frameTop, tabScale);
+            }
+            graphics.flush();
             if (document != null) {
                 var viewport = document.getViewport();
                 // drawScreenDocument resets Mask and discards surface offsets. The embedded
@@ -145,6 +195,12 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 }
                 Minecraft.getInstance().renderBuffers().bufferSource().endBatch();
             }
+            for (var tab : tabs) if (tab.selection().equals(effectiveGroup)) {
+                ChapterGroupTabView.draw(graphics, tab, true, frameLeft, frameTop, tabScale);
+            }
+            graphics.flush();
+            var hovered = tabAt(mouseX, mouseY);
+            if (hovered != null) graphics.renderTooltip(font, Component.literal(hovered.title()), mouseX, mouseY);
             ResourcePreviewDialog.draw(graphics.pose(), document);
             Client.drawPersistentScreenDocuments(graphics, document);
             graphics.flush();
@@ -159,8 +215,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
     @Override
     public void tick() {
         super.tick();
+        captureListScroll();
+        refreshTabs();
         Document document = getLinkedDocument();
-        if (document != boundDocument || document != null && document.getRefreshGeneration() != boundGeneration) {
+        if (listDirty || document != boundDocument || document != null && document.getRefreshGeneration() != boundGeneration) {
             try {
                 bindCurrentDocument();
             } catch (RuntimeException exception) {
@@ -175,7 +233,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     public void updateSnapshot(QuestLogSnapshot updated) {
         if (snapshot.equals(updated)) return;
+        captureListScroll();
         snapshot = updated;
+        pruneChapterState();
+        requestedGroup = requestedGroup.retainValid(updated);
         setPauseGame(updated.pauseGame());
         bindCurrentDocument();
     }
@@ -191,7 +252,20 @@ public final class PortholeQuestScreen extends ApricityScreen {
         // document from AUI's global pointer route so events cannot be sent twice.
         document.setManuallyRendered(true);
         previousMouse = null;
-        QuestLogView.render(document, snapshot);
+        long generation = document.getRefreshGeneration();
+        long version = ++bindingVersion;
+        refreshTabs();
+        var visibleGroups = filter.project(snapshot);
+        var listGroups = ChapterGroupTabs.select(visibleGroups, effectiveGroup);
+        String groupTitle = effectiveGroup.all() ? allGroupTitle() : listGroups.getFirst().title();
+        QuestLogView.render(document, listGroups, groupTitle, filter, expanded, defaultExpanded,
+                () -> getLinkedDocument() == document && document.isCurrentGeneration(generation) && bindingVersion == version,
+                this::changeFilter, this::toggleChapter);
+        document.commitRenderState();
+        var entries = document.querySelector("#list-entries");
+        entries.setScrollTop(listScroll);
+        listScroll = entries.getTargetScrollTop();
+        listDirty = false;
         document.clearAllTextSelections();
         updateFrameTransform();
         boundDocument = document;
@@ -200,13 +274,99 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 boundGeneration, snapshot.fileGeneration(), snapshot.groups().size(), snapshot.chapterCount(),
                 snapshot.entryCount(), document.getViewport().layoutWidth(), document.getViewport().layoutHeight(),
                 document.getViewport().renderScale(), frameLeft, frameTop, width, height);
+        int visibleChapters = listGroups.stream().mapToInt(group -> group.chapters().size()).sum();
+        int visibleEntries = listGroups.stream().flatMap(group -> group.chapters().stream())
+                .mapToInt(chapter -> chapter.entries().size()).sum();
+        PortholeQuest.LOGGER.info("[PortholeQuest R2] List filter={} groups={} chapters={} entries={} scroll={}",
+                filter, visibleGroups.size(), visibleChapters, visibleEntries, listScroll);
+        PortholeQuest.LOGGER.info("[PortholeQuest R2] Tabs candidates={} placed={} requested={} effective={}",
+                visibleGroups.size() + 1, tabs.size(), requestedGroup, effectiveGroup);
+    }
+
+    private static String allGroupTitle() {
+        return Component.translatable("ui.portholequest.filter.all").getString();
+    }
+
+    private void refreshTabs() {
+        Document document = getLinkedDocument();
+        if (document == null || document.isDisposed()) return;
+        var next = ChapterGroupTabs.layout(filter.project(snapshot), allGroupTitle(), width, height,
+                document.getViewport().renderScale());
+        var selected = ChapterGroupTabs.resolve(requestedGroup, next);
+        if (!tabs.equals(next)) {
+            tabs = next;
+            pressedTab = null;
+            listDirty = true;
+        }
+        if (!effectiveGroup.equals(selected)) {
+            effectiveGroup = selected;
+            listScroll = 0;
+            listDirty = true;
+        }
+    }
+
+    private ChapterGroupTabs.Slot tabAt(double mouseX, double mouseY) {
+        Document document = getLinkedDocument();
+        if (document == null || document.isDisposed()) return null;
+        updateFrameTransform();
+        double scale = document.getViewport().renderScale();
+        double x = (mouseX - frameLeft) / scale;
+        double y = (mouseY - frameTop) / scale;
+        for (var tab : tabs) if (tab.contains(x, y)) return tab;
+        return null;
+    }
+
+    private void changeGroup(GroupSelection group) {
+        // Clicking ALL during fallback intentionally replaces the remembered preference.
+        if (requestedGroup.equals(group)) return;
+        requestedGroup = group;
+        if (!effectiveGroup.equals(group)) listScroll = 0;
+        listDirty = true;
+    }
+
+    private void changeFilter(ListFilter mode) {
+        if (filter == mode) return;
+        filter = mode;
+        listScroll = 0;
+        listDirty = true;
+    }
+
+    private void toggleChapter(long chapterId) {
+        captureListScroll();
+        expanded.put(chapterId, !expanded.getOrDefault(chapterId, defaultExpanded));
+        // Rebuild next tick, after AUI has finished the click event and its followups.
+        listDirty = true;
+    }
+
+    private void pruneChapterState() {
+        var valid = new HashSet<Long>();
+        for (var group : snapshot.groups()) for (var chapter : group.chapters()) valid.add(chapter.id());
+        expanded.keySet().retainAll(valid);
+    }
+
+    private void captureListScroll() {
+        Document document = getLinkedDocument();
+        // A refreshed DOM has lost its old scroll; preserve the Java copy instead.
+        if (listDirty || document == null || document != boundDocument || document.isDisposed()
+                || document.getRefreshGeneration() != boundGeneration) return;
+        var entries = document.querySelector("#list-entries");
+        if (entries != null) listScroll = entries.getTargetScrollTop();
+    }
+
+    public ListState captureListState() {
+        captureListScroll();
+        return new ListState(filter, defaultExpanded, expanded, listScroll, requestedGroup);
     }
 
     @Override
     public void removed() {
+        saveState.accept(captureListState());
+        bindingVersion++;
         boundDocument = null;
         boundGeneration = -1;
         previousMouse = null;
+        pressedTab = null;
+        tabs = List.of();
         super.removed();
     }
 }

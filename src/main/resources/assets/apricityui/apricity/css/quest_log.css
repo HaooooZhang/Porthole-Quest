@@ -9,6 +9,7 @@ body {
     padding: 0;
     font-family: unset;
     font-size: 9px;
+    line-height: 9px;
     color: #423027;
 }
 /* 336x208 outer frame, 8px border, 320x192 paper. Integer CSS coordinates. */
@@ -29,10 +30,27 @@ body {
     top: 0;
     width: 120px;
     height: 192px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     background: #dac9a4;
 }
+#list-heading {
+    position: absolute; left: 0; top: 0; width: 120px; height: 16px;
+    padding: 3px 4px; overflow: hidden; background: #bda57f;
+}
+#list-entries {
+    position: absolute; left: 0; top: 16px; width: 120px; height: 160px;
+    overflow-y: auto; overflow-x: hidden;
+}
+#list-switches {
+    position: absolute; left: 0; top: 176px; width: 120px; height: 16px;
+    display: flex; overflow: hidden; background: #bda57f;
+}
+.filter-button {
+    width: 40px; height: 16px; flex-shrink: 0;
+    padding: 2px 0 3px; border: 1px solid transparent; text-align: center;
+}
+.filter-button.selected { border-color: #624331; background: #d0bb95; }
+.filter-button:hover, .chapter-row:hover { background: #eee5d0; }
 #blank-detail {
     position: absolute;
     left: 128px;
@@ -43,12 +61,16 @@ body {
     overflow: hidden;
 }
 #blank-title { margin-top: 72px; text-align: center; color: #a79779; }
-.group-row, .chapter-row, .quest-row, .empty-row {
-    min-height: 16px;
-    padding: 3px 4px;
-    word-break: break-all;
-}
-.group-row { background: #bda57f; }
-.chapter-row { padding-left: 8px; background: #d0bb95; }
-.quest-row { padding-left: 12px; border-bottom: 1px solid #c7b58f; }
-.link-row { color: #4c6660; }
+.chapter-row, .quest-row { position: relative; }
+.chapter-row { min-height: 21px; padding: 5px 3px 6px; border-top: 1px solid #bda57f; background: #d0bb95; }
+.quest-row { min-height: 17px; padding: 4px 3px; }
+.chapter-title { margin-left: 10px; max-width: 100px; word-break: break-all; }
+.quest-title { margin-left: 13px; max-width: 85px; word-break: break-all; }
+.row-marker { position: absolute; left: 3px; width: 8px; height: 9px; text-align: center; }
+.expand-marker { top: 6px; }
+.quest-row .row-marker { top: 4px; }
+.state-locked { color: #776c60; }
+.state-available { color: #4c6660; }
+.state-complete { color: #4d7640; }
+.state-reward { color: #765318; background: #eed15a; }
+.empty-row { padding: 6px 4px; word-break: break-all; }
