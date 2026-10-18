@@ -7,6 +7,7 @@ html, body {
 body {
     margin: 0;
     padding: 0;
+    /* Let ApricityUI bridge to Minecraft's active Font, including resource-pack fallback. */
     font-family: unset;
     font-size: 9px;
     line-height: 9px;
@@ -50,17 +51,54 @@ body {
     padding: 2px 0 3px; border: 1px solid transparent; text-align: center;
 }
 .filter-button.selected { border-color: #624331; background: #d0bb95; }
-.filter-button:hover, .chapter-row:hover { background: #eee5d0; }
-#blank-detail {
+.filter-button:hover, .chapter-row:hover, .quest-row:hover { background: #eee5d0; }
+#detail-panel {
     position: absolute;
     left: 128px;
     top: 0;
     width: 192px;
     height: 192px;
-    padding: 12px;
+    padding: 0;
     overflow: hidden;
 }
 #blank-title { margin-top: 72px; text-align: center; color: #a79779; }
+#detail-header { position: absolute; left: 0; top: 0; width: 192px; height: 64px; padding: 4px 8px; overflow: hidden; }
+#detail-icon { width: 16px; height: 16px; margin: 0 auto 4px; }
+#detail-title { width: 176px; height: 10px; margin-bottom: 4px; overflow: hidden; }
+#detail-subtitle { width: 176px; line-height: 9px; text-align: center; word-break: break-all; overflow: hidden; }
+.detail-subtitle-line { display: block; min-height: 9px; line-height: 9px; }
+#detail-status { width: 176px; height: 9px; line-height: 9px; text-align: center; color: #776c60; }
+#detail-content { position: absolute; left: 0; top: 64px; width: 192px; height: 112px; overflow-y: auto; overflow-x: hidden; padding: 0 4px; }
+#detail-empty { padding: 6px 4px; color: #a79779; word-break: break-all; }
+#detail-content .detail-section-label { padding: 4px 3px 2px; color: #776c60; border-bottom: 1px solid #bda57f; }
+.detail-note { padding: 5px 3px; color: #a79779; word-break: break-all; }
+.quest-description { padding: 3px; line-height: 9px; word-break: break-all; }
+.quest-description.collapsed { max-height: 45px; overflow: hidden; }
+.quest-description-line { min-height: 9px; }
+.detail-expand-button { margin: 2px 3px; padding: 2px 3px; height: 14px; border: 1px solid #9a8060; background: #d0bb95; text-align: center; cursor: pointer; }
+.quest-task-row { position: relative; min-height: 27px; padding: 3px 3px 3px 23px; border-top: 1px solid #bda57f; word-break: break-all; }
+.detail-inline-icon { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; pointer-events: none; }
+.quest-task-title { min-height: 9px; padding-right: 2px; }
+.quest-task-progress { color: #776c60; min-height: 9px; }
+.quest-task-action { position: absolute; right: 3px; bottom: 3px; min-width: 24px; height: 11px; padding: 1px 2px; border: 1px solid #9a8060; background: #d0bb95; color: #776c60; line-height: 9px; text-align: center; pointer-events: none; }
+.quest-task-row[data-task-type] .quest-task-title { padding-right: 32px; }
+.quest-reward-grid { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; }
+.quest-reward-card { position: relative; width: 56px; min-height: 39px; padding: 2px 2px 2px 21px; border: 1px solid #9a8060; background: #d0bb95; word-break: break-all; }
+.quest-reward-card .detail-inline-icon { left: 2px; top: 2px; }
+.quest-reward-title { min-height: 18px; line-height: 9px; }
+.quest-reward-state { min-height: 9px; color: #776c60; line-height: 9px; }
+.reward-can_claim { border-color: #b4942e; }
+.reward-claimed { border-color: #688b58; }
+.reward-cant_claim { opacity: 0.72; }
+.chapter-detail-row { position: relative; min-height: 18px; padding: 4px 3px 4px 15px; border-top: 1px solid #bda57f; cursor: pointer; }
+.chapter-detail-row:hover { background: #eee5d0; }
+.chapter-detail-title { word-break: break-all; }
+.chapter-detail-row .row-marker { left: 3px; top: 4px; }
+#detail-footer { position: absolute; left: 0; top: 176px; width: 192px; height: 16px; display: flex; gap: 2px; padding: 2px; overflow: hidden; }
+.detail-action-button { width: 93px; height: 12px; flex: 0 0 93px; border: 1px solid #9a8060; background: #d0bb95; color: #423027; line-height: 10px; text-align: center; overflow: hidden; pointer-events: none; }
+.detail-action-button[aria-disabled="true"] { opacity: 0.78; }
+.detail-action-label { width: 100%; height: 10px; line-height: 10px; white-space: nowrap; }
+.detail-context { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: 1px solid #624331; pointer-events: none; }
 .chapter-row, .quest-row { position: relative; }
 .chapter-row { min-height: 21px; padding: 5px 3px 6px; border-top: 1px solid #bda57f; background: #d0bb95; }
 .quest-row { min-height: 17px; padding: 4px 3px; }
