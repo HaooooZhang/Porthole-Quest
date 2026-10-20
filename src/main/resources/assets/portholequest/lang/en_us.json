@@ -6,6 +6,8 @@
   "portholequest.configuration.defaultListFilter.tooltip": "ACTIVE: unfinished executable quests or unclaimed rewards. COMPLETED: executable or completed quests. ALL: all visible quests. Valid session state takes priority over this default.",
   "portholequest.configuration.defaultChapterExpanded": "Expand chapters initially",
   "portholequest.configuration.defaultChapterExpanded.tooltip": "Default for chapters without a cached expansion state in this world session.",
+  "portholequest.configuration.maxDetailHistory": "Maximum detail history",
+  "portholequest.configuration.maxDetailHistory.tooltip": "Maximum number of detail navigation steps kept while the journal is open. Oldest steps are discarded first. Default: 32; range: 1-256.",
   "portholequest.configuration.blankDetailMode": "Blank detail content",
   "portholequest.configuration.blankDetailMode.tooltip": "IMAGE: centered custom image. BOOK: FTB Quests book title and icon. EMPTY: no content.",
   "portholequest.configuration.blankDetailBookTitleColor": "Book title color",

@@ -20,6 +20,7 @@ import ink.myumoon.portholequest.client.input.ChapterClickSequence;
 import ink.myumoon.portholequest.model.ChapterGroupTabs;
 import ink.myumoon.portholequest.model.GroupSelection;
 import ink.myumoon.portholequest.client.session.GuiSessionCache.ListState;
+import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.model.ListFilter;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.client.Minecraft;
@@ -36,6 +37,10 @@ import java.util.ArrayList;
 import java.util.function.Consumer;
 
 public final class PortholeQuestScreen extends ApricityScreen {
+    private static final double BACK_SWATCH_LEFT = 136;
+    private static final double BACK_SWATCH_TOP = 0;
+    private static final double BACK_SWATCH_WIDTH = 32;
+    private static final double BACK_SWATCH_HEIGHT = 8;
     private QuestLogSnapshot snapshot;
     private Document boundDocument;
     private long boundGeneration = -1;
@@ -57,22 +62,25 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private List<ChapterGroupTabs.Slot> tabs = List.of();
     private ChapterGroupTabs.Slot pressedTab;
     private ScreenViewState detail = ScreenViewState.BLANK;
+    private final ScreenStateHistory detailHistory;
     private DetailHeaderView detailHeader;
     private QuestDetailView questDetail;
     private List<QuestLogView.HoverTarget> hoverTargets = List.of();
     private final ChapterClickSequence chapterClicks = new ChapterClickSequence();
     private boolean chapterClickedThisRelease;
+    private boolean pressedFrameBack;
     private long detailOpenedAt;
 
     public PortholeQuestScreen(QuestLogSnapshot snapshot, ListState state, Consumer<ListState> saveState) {
         super("screens/quest_log.html");
         this.snapshot = snapshot;
+        this.detailHistory = new ScreenStateHistory(Config.MAX_DETAIL_HISTORY.get());
         this.filter = state.filter();
         this.defaultExpanded = state.defaultExpanded();
         this.expanded = new HashMap<>(state.expanded());
         this.listScroll = state.scrollTop();
         this.detailScroll = state.detailScroll();
-        this.detail = ScreenViewState.fromSession(state.detail()).retainValid(snapshot, filter);
+        this.detail = ScreenViewState.fromSession(state.detail()).retainValid(snapshot);
         this.saveState = saveState;
         this.requestedGroup = state.group().retainValid(snapshot);
         this.effectiveGroup = this.requestedGroup;
@@ -106,6 +114,17 @@ public final class PortholeQuestScreen extends ApricityScreen {
         frameLeft = (int) Math.floor((width - viewport.layoutWidth() * scale) / 2);
         frameTop = (int) Math.floor((height - viewport.layoutHeight() * scale) / 2);
         document.setViewportTransform(scale, scale, frameLeft, frameTop);
+    }
+
+    private boolean isFrameBorder(double mouseX, double mouseY) {
+        Document document = getLinkedDocument();
+        if (document == null || document.isDisposed()) return false;
+        updateFrameTransform();
+        double scale = document.getViewport().renderScale();
+        double x = (mouseX - frameLeft) / scale;
+        double y = (mouseY - frameTop) / scale;
+        return x >= BACK_SWATCH_LEFT && x < BACK_SWATCH_LEFT + BACK_SWATCH_WIDTH
+                && y >= BACK_SWATCH_TOP && y < BACK_SWATCH_TOP + BACK_SWATCH_HEIGHT;
     }
 
     private MouseEvent pointerEvent(String type, double mouseX, double mouseY, int button) {
@@ -152,10 +171,15 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        pressedFrameBack = false;
         var tab = tabAt(mouseX, mouseY);
         if (tab != null) {
             chapterClicks.reset();
             if (button == 0) pressedTab = tab;
+            return true;
+        }
+        if (button == 0 && isFrameBorder(mouseX, mouseY)) {
+            pressedFrameBack = true;
             return true;
         }
         return dispatchPointer(pointerEvent("mousedown", mouseX, mouseY, button));
@@ -163,6 +187,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && pressedFrameBack) {
+            pressedFrameBack = false;
+            if (isFrameBorder(mouseX, mouseY)) returnFromHistory();
+            return true;
+        }
         if (button == 0 && pressedTab != null) {
             var pressed = pressedTab;
             pressedTab = null;
@@ -234,13 +263,13 @@ public final class PortholeQuestScreen extends ApricityScreen {
                     questDetail.draw(graphics, frameLeft, frameTop, viewport.renderScale());
                 }
             }
-            for (var tab : tabs) if (tab.selection().equals(effectiveGroup)) {
-                ChapterGroupTabView.draw(graphics, tab, true, frameLeft, frameTop, tabScale);
-            }
-            graphics.flush();
             ResourcePreviewDialog.draw(graphics.pose(), document);
             Client.drawPersistentScreenDocuments(graphics, document);
             graphics.flush();
+            drawFrameBack(graphics, mouseX, mouseY, tabScale);
+            for (var tab : tabs) if (tab.selection().equals(effectiveGroup)) {
+                ChapterGroupTabView.draw(graphics, tab, true, frameLeft, frameTop, tabScale);
+            }
             var hovered = tabAt(mouseX, mouseY);
             graphics.pose().pushPose();
             graphics.pose().translate(0, 0, 500);
@@ -262,9 +291,24 @@ public final class PortholeQuestScreen extends ApricityScreen {
         }
     }
 
+    private void drawFrameBack(GuiGraphics graphics, double mouseX, double mouseY, float scale) {
+        int left = (int) Math.floor(frameLeft + BACK_SWATCH_LEFT * scale);
+        int top = (int) Math.floor(frameTop + BACK_SWATCH_TOP * scale);
+        int right = (int) Math.ceil(frameLeft + (BACK_SWATCH_LEFT + BACK_SWATCH_WIDTH) * scale);
+        int bottom = (int) Math.ceil(frameTop + (BACK_SWATCH_TOP + BACK_SWATCH_HEIGHT) * scale);
+        int color = pressedFrameBack ? 0xff21877b
+                : isFrameBorder(mouseX, mouseY) ? 0xff65d7c6 : 0xff33b5a4;
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 275);
+        graphics.fill(left, top, right, bottom, color);
+        graphics.pose().popPose();
+        graphics.flush();
+    }
+
     @Override
     public void tick() {
         super.tick();
+        detailHistory.setLimit(Config.MAX_DETAIL_HISTORY.get());
         captureListScroll();
         captureDetailScroll();
         refreshTabs();
@@ -287,6 +331,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         captureListScroll();
         captureDetailScroll();
         snapshot = updated;
+        pruneDetailHistory();
         detailDirty = true;
         chapterClicks.reset();
         pruneChapterState();
@@ -311,7 +356,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (documentChanged) chapterClicks.reset();
         long version = ++bindingVersion;
         ScreenViewState previousDetail = detail;
-        detail = detail.retainValid(snapshot, filter);
+        detail = detail.retainValid(snapshot);
+        pruneDetailHistory();
         if (!previousDetail.equals(detail)) {
             detailScroll = 0;
             detailDirty = true;
@@ -427,6 +473,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (filter == mode) return;
         captureDetailScroll();
         filter = mode;
+        pruneDetailHistory();
         chapterDetailDirty = detail.kind() == ScreenViewState.Kind.CHAPTER;
         listScroll = 0;
         listDirty = true;
@@ -455,13 +502,34 @@ public final class PortholeQuestScreen extends ApricityScreen {
     }
 
     private void selectDetail(ScreenViewState requested) {
-        ScreenViewState next = requested.retainValid(snapshot, filter);
+        ScreenViewState next = requested.retainValid(snapshot);
         // Native FTBQ blocks clicks on quests whose details are hidden until startable.
         if (!requested.equals(next) || next.equals(detail)) return;
         captureListScroll();
         captureDetailScroll();
+        detailHistory.push(detail, detailScroll);
         detail = next;
         detailScroll = 0;
+        detailDirty = true;
+        detailOpenedAt = Util.getMillis();
+        listDirty = true;
+    }
+
+    private void pruneDetailHistory() {
+        detailHistory.retainValid(state -> state.equals(state.retainValid(snapshot)));
+    }
+
+    private void returnFromHistory() {
+        chapterClicks.reset();
+        captureListScroll();
+        captureDetailScroll();
+        ScreenStateHistory.Frame previous = detailHistory.popValid(
+                state -> state.equals(state.retainValid(snapshot)));
+        ScreenViewState next = previous == null ? ScreenViewState.BLANK : previous.state();
+        double nextScroll = previous == null ? 0 : previous.detailScroll();
+        if (detail.equals(next) && Double.compare(detailScroll, nextScroll) == 0) return;
+        detail = next;
+        detailScroll = nextScroll;
         detailDirty = true;
         detailOpenedAt = Util.getMillis();
         listDirty = true;
@@ -523,7 +591,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
     public ListState captureListState() {
         captureListScroll();
         captureDetailScroll();
-        ScreenViewState validDetail = detail.retainValid(snapshot, filter);
+        ScreenViewState validDetail = detail.retainValid(snapshot);
         return new ListState(filter, defaultExpanded, expanded, listScroll, requestedGroup,
                 validDetail.toSession(), detailScroll);
     }
@@ -536,10 +604,12 @@ public final class PortholeQuestScreen extends ApricityScreen {
         boundGeneration = -1;
         previousMouse = null;
         pressedTab = null;
+        pressedFrameBack = false;
         tabs = List.of();
         hoverTargets = List.of();
         detailHeader = null;
         questDetail = null;
+        detailHistory.clear();
         chapterClicks.reset();
         super.removed();
     }

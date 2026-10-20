@@ -1,6 +1,5 @@
 package ink.myumoon.portholequest.client.screen;
 
-import ink.myumoon.portholequest.model.ListFilter;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import ink.myumoon.portholequest.client.session.GuiSessionCache.DetailState;
 
@@ -33,9 +32,9 @@ public record ScreenViewState(Kind kind, long chapterId, long entryId, long ques
         };
     }
 
-    public ScreenViewState retainValid(QuestLogSnapshot snapshot, ListFilter filter) {
+    public ScreenViewState retainValid(QuestLogSnapshot snapshot) {
         if (kind == Kind.BLANK) return BLANK;
-        for (var group : filter.project(snapshot)) for (var chapter : group.chapters()) {
+        for (var group : snapshot.groups()) for (var chapter : group.chapters()) {
             if (chapter.id() != chapterId) continue;
             if (kind == Kind.CHAPTER) return snapshot.chapterHeaders().containsKey(chapterId) ? this : BLANK;
             var header = snapshot.questHeaders().get(questId);

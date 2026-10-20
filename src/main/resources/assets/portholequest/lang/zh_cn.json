@@ -6,6 +6,8 @@
   "portholequest.configuration.defaultListFilter.tooltip": "ACTIVE：可执行的未完成任务或奖励待领取；COMPLETED：可执行或已完成任务；ALL：全部可见任务。同一世界的有效会话缓存优先于此默认值。",
   "portholequest.configuration.defaultChapterExpanded": "章节默认展开",
   "portholequest.configuration.defaultChapterExpanded.tooltip": "当前世界会话中，没有展开状态缓存的章节使用此默认值。",
+  "portholequest.configuration.maxDetailHistory": "详情返回历史上限",
+  "portholequest.configuration.maxDetailHistory.tooltip": "日志打开期间保留的详情返回步数上限。超出时优先移除最旧记录。默认值：32；范围：1–256。",
   "portholequest.configuration.blankDetailMode": "空详情内容",
   "portholequest.configuration.blankDetailMode.tooltip": "IMAGE：居中显示自定义图片；BOOK：FTB Quests 任务书标题与图标；EMPTY：无内容。",
   "portholequest.configuration.blankDetailBookTitleColor": "任务书标题颜色",
