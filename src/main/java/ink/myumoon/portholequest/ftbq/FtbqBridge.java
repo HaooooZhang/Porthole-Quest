@@ -118,7 +118,7 @@ public final class FtbqBridge {
             }
         }
         return QuestLogReadResult.ready(new QuestLogSnapshot(fileGeneration, data.getTeamId(), file.isPauseGame(), groups,
-                chapterHeaders, questHeaders, questDetails));
+                chapterHeaders, questHeaders, questDetails, file.getTitle().getString(), file.getIcon().getJson().toString()));
     }
 
     private static QuestLogSnapshot.QuestDetail detail(Quest quest, Chapter chapter,

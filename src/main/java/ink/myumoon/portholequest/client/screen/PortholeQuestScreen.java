@@ -71,6 +71,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
         this.defaultExpanded = state.defaultExpanded();
         this.expanded = new HashMap<>(state.expanded());
         this.listScroll = state.scrollTop();
+        this.detailScroll = state.detailScroll();
+        this.detail = ScreenViewState.fromSession(state.detail()).retainValid(snapshot, filter);
         this.saveState = saveState;
         this.requestedGroup = state.group().retainValid(snapshot);
         this.effectiveGroup = this.requestedGroup;
@@ -520,7 +522,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     public ListState captureListState() {
         captureListScroll();
-        return new ListState(filter, defaultExpanded, expanded, listScroll, requestedGroup);
+        captureDetailScroll();
+        ScreenViewState validDetail = detail.retainValid(snapshot, filter);
+        return new ListState(filter, defaultExpanded, expanded, listScroll, requestedGroup,
+                validDetail.toSession(), detailScroll);
     }
 
     @Override

@@ -2,8 +2,9 @@ package ink.myumoon.portholequest.client.screen;
 
 import ink.myumoon.portholequest.model.ListFilter;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
+import ink.myumoon.portholequest.client.session.GuiSessionCache.DetailState;
 
-/** Basic detail identity. R3 adds history; D4 adds session restoration. */
+/** Basic detail identity. R3 adds history; session restoration stores its detached form. */
 public record ScreenViewState(Kind kind, long chapterId, long entryId, long questId) {
     public enum Kind { BLANK, CHAPTER, QUEST }
     public static final ScreenViewState BLANK = new ScreenViewState(Kind.BLANK, 0, 0, 0);
@@ -14,6 +15,22 @@ public record ScreenViewState(Kind kind, long chapterId, long entryId, long ques
 
     public static ScreenViewState quest(QuestLogSnapshot.Entry entry) {
         return new ScreenViewState(Kind.QUEST, entry.chapterId(), entry.entryId(), entry.questId());
+    }
+
+    public static ScreenViewState fromSession(DetailState state) {
+        return switch (state.kind()) {
+            case BLANK -> BLANK;
+            case CHAPTER -> chapter(state.sourceChapterId());
+            case QUEST -> new ScreenViewState(Kind.QUEST, state.sourceChapterId(), state.entryId(), state.questId());
+        };
+    }
+
+    public DetailState toSession() {
+        return switch (kind) {
+            case BLANK -> DetailState.BLANK;
+            case CHAPTER -> DetailState.chapter(chapterId);
+            case QUEST -> DetailState.quest(chapterId, entryId, questId);
+        };
     }
 
     public ScreenViewState retainValid(QuestLogSnapshot snapshot, ListFilter filter) {

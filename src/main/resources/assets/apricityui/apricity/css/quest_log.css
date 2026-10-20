@@ -62,6 +62,10 @@ body {
     overflow: hidden;
 }
 #blank-title { margin-top: 72px; text-align: center; color: #a79779; }
+#blank-image { position: absolute; object-fit: contain; image-rendering: pixelated; }
+#blank-book { position: absolute; left: 0; top: 68px; width: 192px; height: 56px; }
+#blank-book-icon { position: absolute; left: 80px; top: 0; width: 32px; height: 32px; }
+#blank-book-title { position: absolute; left: 8px; top: 38px; width: 176px; height: 18px; overflow: hidden; }
 #detail-header { position: absolute; left: 0; top: 0; width: 192px; height: 64px; padding: 4px 8px; overflow: hidden; }
 #detail-icon { width: 16px; height: 16px; margin: 0 auto 4px; }
 #detail-title { width: 176px; height: 10px; margin-bottom: 4px; overflow: hidden; }

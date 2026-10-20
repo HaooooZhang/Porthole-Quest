@@ -190,6 +190,38 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 
+// Pure model contract checks need no Minecraft launch or test framework dependency.
+def orderCheckClasses = layout.buildDirectory.dir('checks/chapterEntryOrder')
+def compileChapterEntryOrderCheck = tasks.register('compileChapterEntryOrderCheck', JavaCompile) {
+    dependsOn tasks.named('classes')
+    source = files('checks/ChapterEntryOrderCheck.java', 'checks/ChapterGroupTabsCheck.java', 'checks/DetailSelectionCheck.java')
+    classpath = sourceSets.main.output
+    destinationDirectory = orderCheckClasses
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+def checkChapterEntryOrder = tasks.register('checkChapterEntryOrder', JavaExec) {
+    dependsOn compileChapterEntryOrderCheck
+    classpath = files(orderCheckClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.model.ChapterEntryOrderCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkChapterEntryOrder }
+def checkChapterGroupTabs = tasks.register('checkChapterGroupTabs', JavaExec) {
+    dependsOn compileChapterEntryOrderCheck
+    classpath = files(orderCheckClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.model.ChapterGroupTabsCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkChapterGroupTabs }
+
+def checkDetailSelection = tasks.register('checkDetailSelection', JavaExec) {
+    dependsOn compileChapterEntryOrderCheck
+    classpath = files(orderCheckClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.model.DetailSelectionCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkDetailSelection }
+
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
 idea {
     module {

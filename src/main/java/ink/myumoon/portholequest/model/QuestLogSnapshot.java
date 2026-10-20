@@ -8,14 +8,23 @@ import java.util.UUID;
 /** Detached client data. No FTBQ Quest, Task, Reward or TeamData object crosses this boundary. */
 public record QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGame, List<Group> groups,
                                Map<Long, ChapterHeader> chapterHeaders, Map<Long, QuestHeader> questHeaders,
-                               Map<Long, QuestDetail> questDetails) {
+                               Map<Long, QuestDetail> questDetails, String bookTitle, String bookIconJson) {
     public QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGame, List<Group> groups) {
-        this(fileGeneration, teamId, pauseGame, groups, Map.of(), Map.of(), Map.of());
+        this(fileGeneration, teamId, pauseGame, groups, Map.of(), Map.of(), Map.of(), "Quest Journal",
+                "{\"id\":\"ftbquests:textures/item/book.png\"}");
     }
 
     public QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGame, List<Group> groups,
                             Map<Long, ChapterHeader> chapterHeaders, Map<Long, QuestHeader> questHeaders) {
-        this(fileGeneration, teamId, pauseGame, groups, chapterHeaders, questHeaders, Map.of());
+        this(fileGeneration, teamId, pauseGame, groups, chapterHeaders, questHeaders, Map.of(), "Quest Journal",
+                "{\"id\":\"ftbquests:textures/item/book.png\"}");
+    }
+
+    public QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGame, List<Group> groups,
+                            Map<Long, ChapterHeader> chapterHeaders, Map<Long, QuestHeader> questHeaders,
+                            Map<Long, QuestDetail> questDetails) {
+        this(fileGeneration, teamId, pauseGame, groups, chapterHeaders, questHeaders, questDetails,
+                "Quest Journal", "{\"id\":\"ftbquests:textures/item/book.png\"}");
     }
 
     public QuestLogSnapshot {
@@ -24,6 +33,8 @@ public record QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGa
         chapterHeaders = Map.copyOf(chapterHeaders);
         questHeaders = Map.copyOf(questHeaders);
         questDetails = Map.copyOf(questDetails);
+        Objects.requireNonNull(bookTitle);
+        Objects.requireNonNull(bookIconJson);
     }
 
     /** JSON is FTB Library's detached icon representation, never a live quest/icon object. */
