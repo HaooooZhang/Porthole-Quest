@@ -8,11 +8,17 @@ import dev.ftb.mods.ftbquests.quest.task.Task;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import dev.ftb.mods.ftbquests.quest.reward.RewardClaimType;
+import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
+import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
+import ink.myumoon.portholequest.PortholeQuest;
 import ink.myumoon.portholequest.model.QuestLogReadResult;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import ink.myumoon.portholequest.model.ChapterEntryOrder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.contents.PlainTextContents;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -130,10 +136,49 @@ public final class FtbqBridge {
         boolean complexDescription = rawDescription.stream().anyMatch(line ->
                 line.contains("{image:") || line.contains("{@image:") || line.contains("{click:")
                         || line.contains("{@link:") || line.contains("{@quest:"));
-        var description = hideText ? List.<String>of() : quest.getDescription().stream()
-                .map(Component::getString)
-                .filter(line -> !line.isBlank())
-                .toList();
+        var descriptionPages = new ArrayList<QuestLogSnapshot.DescriptionPage>();
+        var descriptionLines = new ArrayList<String>();
+        if (!hideText) {
+            List<Component> components = quest.getDescription();
+            for (var pageIndex : quest.buildDescriptionIndex()) {
+                var pageParts = new ArrayList<QuestLogSnapshot.DescriptionPart>();
+                boolean previousLineWasImage = false;
+                for (int i = pageIndex.getFirst(); i <= pageIndex.getSecond() && i < components.size(); i++) {
+                    if (i < 0) continue;
+                    Component source = components.get(i);
+                    var lineParts = new ArrayList<QuestLogSnapshot.DescriptionPart>();
+                    appendDescriptionParts(parseDescriptionComponent(source), lineParts, Style.EMPTY, quest.id);
+                    int firstImage = -1;
+                    for (int partIndex = 0; partIndex < lineParts.size(); partIndex++) {
+                        if (lineParts.get(partIndex).kind() == QuestLogSnapshot.DescriptionPart.Kind.IMAGE) {
+                            firstImage = partIndex;
+                            break;
+                        }
+                    }
+                    boolean containsImage = firstImage >= 0;
+                    if (containsImage) {
+                        QuestLogSnapshot.DescriptionPart image = lineParts.get(firstImage);
+                        lineParts.clear();
+                        lineParts.add(image);
+                    }
+                    if (!containsImage && source.getString().isBlank() && lineParts.isEmpty()) {
+                        lineParts.add(QuestLogSnapshot.DescriptionPart.text(
+                                new com.google.gson.JsonPrimitive("").toString()));
+                    }
+                    if (!pageParts.isEmpty() && !previousLineWasImage && !containsImage) {
+                        pageParts.add(QuestLogSnapshot.DescriptionPart.text(
+                                new com.google.gson.JsonPrimitive("\n").toString()));
+                    }
+                    if (lineParts.isEmpty()) continue;
+                    descriptionLines.add(source.getString());
+                    pageParts.addAll(lineParts);
+                    previousLineWasImage = containsImage;
+                }
+                descriptionPages.add(new QuestLogSnapshot.DescriptionPage(pageParts));
+            }
+        }
+        var description = descriptionPages.isEmpty() ? new QuestLogSnapshot.Description(List.of())
+                : new QuestLogSnapshot.Description(descriptionPages);
 
         var tasks = new ArrayList<QuestLogSnapshot.TaskDetail>();
         boolean sequential = quest.getRequireSequentialTasks();
@@ -167,7 +212,51 @@ public final class FtbqBridge {
             rewards.add(new QuestLogSnapshot.RewardDetail(reward.id, reward.getType().getTypeId().toString(),
                     typeTitle, title, reward.getAltIcon().getJson().toString(), state, autoClaim.name()));
         }
-        return new QuestLogSnapshot.QuestDetail(description, hideText, complexDescription, paginated, tasks, rewards);
+        return new QuestLogSnapshot.QuestDetail(descriptionLines, hideText, complexDescription, paginated,
+                description, tasks, rewards);
+    }
+
+    private static Component parseDescriptionComponent(Component source) {
+        MutableComponent result;
+        if (source.getContents() instanceof PlainTextContents.LiteralContents literal) {
+            result = Component.empty().withStyle(source.getStyle())
+                    .append(ClientTextComponentUtils.parse(literal.text()));
+        } else {
+            result = MutableComponent.create(source.getContents()).withStyle(source.getStyle());
+        }
+        for (Component sibling : source.getSiblings()) result.append(parseDescriptionComponent(sibling));
+        return result;
+    }
+
+    private static void appendDescriptionParts(Component component,
+                                               List<QuestLogSnapshot.DescriptionPart> parts,
+                                               Style inheritedStyle, long questId) {
+        Style style = component.getStyle().applyTo(inheritedStyle);
+        if (component.getContents() instanceof ImageComponent image) {
+            String iconJson = "{}";
+            try {
+                if (image.getImage() != null) iconJson = image.getImage().getJson().toString();
+            } catch (RuntimeException exception) {
+                PortholeQuest.LOGGER.warn("Invalid FTBQ description image on quest {}", questId, exception);
+            }
+            parts.add(QuestLogSnapshot.DescriptionPart.image(iconJson,
+                    image.getWidth(), image.getHeight(), image.getAlign().name(), image.isFit()));
+            return;
+        } else if (!(component.getContents() instanceof PlainTextContents.LiteralContents literal)
+                || !literal.text().isEmpty()) {
+            MutableComponent leaf = MutableComponent.create(component.getContents()).withStyle(style);
+            String componentJson;
+            try {
+                componentJson = Component.Serializer.toJson(leaf, Minecraft.getInstance().level.registryAccess());
+            } catch (RuntimeException exception) {
+                PortholeQuest.LOGGER.warn("Could not serialize FTBQ description component on quest {}", questId, exception);
+                componentJson = new com.google.gson.JsonPrimitive(leaf.getString()).toString();
+            }
+            parts.add(QuestLogSnapshot.DescriptionPart.text(componentJson));
+        }
+        for (Component sibling : component.getSiblings()) {
+            appendDescriptionParts(sibling, parts, style, questId);
+        }
     }
 
     private static ChapterEntryOrder.Definition definition(long entryId, Quest quest) {

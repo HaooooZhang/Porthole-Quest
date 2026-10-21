@@ -10,6 +10,8 @@ public final class Config {
     public static final ModConfigSpec.EnumValue<ListFilter> DEFAULT_LIST_FILTER;
     public static final ModConfigSpec.BooleanValue DEFAULT_CHAPTER_EXPANDED;
     public static final ModConfigSpec.IntValue MAX_DETAIL_HISTORY;
+    public static final ModConfigSpec.IntValue DESCRIPTION_PREVIEW_LINES;
+    public static final ModConfigSpec.IntValue DESCRIPTION_DIALOG_LINES;
     public static final ModConfigSpec.EnumValue<BlankDetailMode> BLANK_DETAIL_MODE;
     public static final ModConfigSpec.ConfigValue<String> BLANK_DETAIL_BOOK_TITLE_COLOR;
     public static final ModConfigSpec.ConfigValue<String> BLANK_DETAIL_IMAGE;
@@ -29,6 +31,11 @@ public final class Config {
         MAX_DETAIL_HISTORY = builder.comment("Maximum number of detail navigation history entries kept while the journal is open.",
                         "When exceeded, the oldest entries are discarded first.")
                 .defineInRange("maxDetailHistory", 32, 1, 256);
+        DESCRIPTION_PREVIEW_LINES = builder.comment("Number of description lines shown before expanding the Detail preview.")
+                .defineInRange("descriptionPreviewLines", 5, 1, 50);
+        DESCRIPTION_DIALOG_LINES = builder.comment("Expanded descriptions at this line count or above open the reading dialog.",
+                        "Keep this value greater than descriptionPreviewLines.")
+                .defineInRange("descriptionDialogLines", 10, 2, 100);
         BLANK_DETAIL_MODE = builder.comment("Blank detail: IMAGE, BOOK, or EMPTY.")
                 .defineEnum("blankDetailMode", BlankDetailMode.IMAGE);
         BLANK_DETAIL_BOOK_TITLE_COLOR = builder.comment("BOOK title color as #RRGGBB; default is dark beige.")

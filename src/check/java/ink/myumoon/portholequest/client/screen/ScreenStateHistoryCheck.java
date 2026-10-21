@@ -2,6 +2,7 @@ package ink.myumoon.portholequest.client.screen;
 
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import ink.myumoon.portholequest.model.ListFilter;
+import ink.myumoon.portholequest.client.ui.DescriptionDialog;
 
 import java.util.List;
 import java.util.Map;
@@ -42,10 +43,23 @@ public final class ScreenStateHistoryCheck {
         require(previous.detailScroll() == 0, "restored scroll belongs to the returned state");
         require(history.size() == 0, "popped frames are removed");
 
-        history.push(chapter, 17.5);
+        var dialogState = new DescriptionDialog.State(56, 2, 15.5);
+        history.push(quest, 17.5, true, dialogState);
         ScreenStateHistory.Frame restored = history.popValid(state -> true);
-        require(restored != null && restored.state().equals(chapter), "valid detail frame is restored");
+        require(restored != null && restored.state().equals(quest), "valid detail frame is restored");
         require(restored.detailScroll() == 17.5, "detail scroll position is preserved");
+        require(restored.descriptionExpanded(), "history restores the page-specific description expansion state");
+        require(restored.descriptionReturn().orElseThrow().equals(dialogState),
+                "history restores dialog page and scroll state with its detail frame");
+
+        history.push(quest, 0, false, dialogState);
+        require(history.popValid(state -> !state.equals(quest)) == null,
+                "invalid detail state and its associated dialog return are discarded together");
+
+        history.push(chapter, 17.5, true);
+        ScreenStateHistory.Frame chapterFrame = history.popValid(state -> true);
+        require(chapterFrame != null && !chapterFrame.descriptionExpanded(),
+                "non-quest history frames cannot carry description expansion");
 
         history.push(quest, Double.NaN);
         ScreenStateHistory.Frame sanitized = history.popValid(state -> true);
@@ -57,12 +71,14 @@ public final class ScreenStateHistoryCheck {
         ScreenStateHistory capped = new ScreenStateHistory(2);
         capped.push(blank, 0);
         capped.push(chapter, 17.5);
-        capped.push(quest, 31);
+        capped.push(quest, 31, false, dialogState);
         require(capped.size() == 2, "history stays within configured capacity");
         ScreenStateHistory.Frame newest = capped.popValid(state -> true);
         ScreenStateHistory.Frame olderRetained = capped.popValid(state -> true);
         require(newest.state().equals(quest) && olderRetained.state().equals(chapter),
                 "overflow evicts the oldest frame and preserves recent back steps");
+        require(newest.descriptionReturn().orElseThrow().equals(dialogState),
+                "dialog return is retained only as part of its bounded detail frame");
 
         capped.push(blank, 0);
         capped.push(chapter, 17.5);

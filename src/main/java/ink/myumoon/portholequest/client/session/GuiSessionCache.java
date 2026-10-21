@@ -24,14 +24,20 @@ public final class GuiSessionCache {
     }
 
     public record ListState(ListFilter filter, boolean defaultExpanded, Map<Long, Boolean> expanded, double scrollTop,
-                            GroupSelection group, DetailState detail, double detailScroll) {
+                            GroupSelection group, DetailState detail, double detailScroll,
+                            boolean descriptionExpanded) {
         public ListState(ListFilter filter, boolean defaultExpanded, Map<Long, Boolean> expanded, double scrollTop) {
-            this(filter, defaultExpanded, expanded, scrollTop, GroupSelection.ALL, DetailState.BLANK, 0);
+            this(filter, defaultExpanded, expanded, scrollTop, GroupSelection.ALL, DetailState.BLANK, 0, false);
         }
 
         public ListState(ListFilter filter, boolean defaultExpanded, Map<Long, Boolean> expanded, double scrollTop,
                          GroupSelection group) {
-            this(filter, defaultExpanded, expanded, scrollTop, group, DetailState.BLANK, 0);
+            this(filter, defaultExpanded, expanded, scrollTop, group, DetailState.BLANK, 0, false);
+        }
+
+        public ListState(ListFilter filter, boolean defaultExpanded, Map<Long, Boolean> expanded, double scrollTop,
+                         GroupSelection group, DetailState detail, double detailScroll) {
+            this(filter, defaultExpanded, expanded, scrollTop, group, detail, detailScroll, false);
         }
 
         public ListState {

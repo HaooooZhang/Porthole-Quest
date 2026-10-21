@@ -4,14 +4,21 @@ import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.client.screen.ScreenViewState;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /** Read-only Quest Detail body. Actions remain disabled until the later action slices. */
@@ -19,18 +26,37 @@ public final class QuestDetailView {
     private final List<IconPlacement> icons;
     private final Element content;
     private final List<TooltipTarget> tooltipTargets;
+    private final List<TextPlacement> descriptionText;
+    private final Element descriptionContainer;
+    private final Element expandButton;
+    private final TextPlacement descriptionPlacement;
+    private final int previewRows;
+    private boolean descriptionExpanded;
+    private Style hoveredDescriptionStyle;
 
-    private QuestDetailView(List<IconPlacement> icons, Element content, List<TooltipTarget> tooltipTargets) {
+    private QuestDetailView(List<IconPlacement> icons, Element content, List<TooltipTarget> tooltipTargets,
+                            List<TextPlacement> descriptionText, Element descriptionContainer,
+                            Element expandButton, TextPlacement descriptionPlacement,
+                            int previewRows, boolean descriptionExpanded) {
         this.icons = List.copyOf(icons);
         this.content = content;
         this.tooltipTargets = List.copyOf(tooltipTargets);
+        this.descriptionText = List.copyOf(descriptionText);
+        this.descriptionContainer = descriptionContainer;
+        this.expandButton = expandButton;
+        this.descriptionPlacement = descriptionPlacement;
+        this.previewRows = previewRows;
+        this.descriptionExpanded = descriptionExpanded;
     }
 
     public static QuestDetailView bind(Document document, QuestLogSnapshot snapshot, ScreenViewState state,
                                        BooleanSupplier currentBinding,
-                                       Consumer<QuestLogSnapshot.Entry> openQuest) {
+                                       Consumer<QuestLogSnapshot.Entry> openQuest,
+                                       Consumer<Long> openDescription,
+                                       BiConsumer<Long, Boolean> setDescriptionExpanded,
+                                       boolean descriptionExpanded) {
         Element panel = require(document, "#detail-panel");
-        if (state.kind() != ScreenViewState.Kind.QUEST) return new QuestDetailView(List.of(), null, List.of());
+        if (state.kind() != ScreenViewState.Kind.QUEST) return emptyView();
         Element content = document.createElement("div");
         content.setAttribute("id", "detail-content");
         content.setAttribute("aria-label", "quest-detail");
@@ -42,31 +68,53 @@ public final class QuestDetailView {
         QuestLogSnapshot.QuestDetail detail = snapshot.questDetails().get(state.questId());
         if (detail == null) {
             append(document, content, "detail-empty", Component.translatable("ui.portholequest.detail_unavailable").getString(), 0);
-            return new QuestDetailView(List.of(), content, List.of());
+            return new QuestDetailView(List.of(), content, List.of(), List.of(), null, null, null, 0, false);
         }
 
         var icons = new ArrayList<IconPlacement>();
         var tooltipTargets = new ArrayList<TooltipTarget>();
+        var descriptionText = new ArrayList<TextPlacement>();
+        Element descriptionContainer = null;
+        Element expandButton = null;
+        TextPlacement descriptionPlacement = null;
+        int descriptionRows = 0;
         if (detail.descriptionHidden()) {
             append(document, content, "detail-note", Component.translatable("ui.portholequest.description_hidden").getString(), 0);
-        } else if (!detail.descriptionLines().isEmpty()) {
+        } else if (!detail.description().overviewParts().isEmpty() || detail.description().hasImages() || detail.paginated()) {
             append(document, content, "detail-section-label", Component.translatable("ui.portholequest.description").getString(), 0);
-            Element description = append(document, content,
-                    "quest-description" + (expandable(detail) ? " collapsed" : ""), "", 0);
-            for (String line : detail.descriptionLines()) {
-                append(document, description, "quest-description-line", line, 0);
+            Element description = append(document, content, "quest-description", "", 0);
+            descriptionContainer = description;
+            Font font = Minecraft.getInstance().font;
+            int previewLimit = Config.DESCRIPTION_PREVIEW_LINES.get();
+            Component component = DescriptionTextLayout.compose(detail.description().overviewParts());
+            List<FormattedCharSequence> wrapped = DescriptionTextLayout.wrap(component, font, 178);
+            descriptionRows = wrapped.size();
+            int visible = descriptionExpanded ? descriptionRows : Math.min(descriptionRows, previewLimit);
+            if (visible > 0) {
+                Element anchor = append(document, description, "quest-description-line", "", 0);
+                anchor.setInlineStyleProperty("height", (visible * 9) + "px");
+                descriptionPlacement = new TextPlacement(component, wrapped, visible, anchor);
+                descriptionText.add(descriptionPlacement);
             }
-            if (expandable(detail)) {
+            int displayedRows = descriptionExpanded ? descriptionRows : Math.min(descriptionRows, previewLimit);
+            description.setInlineStyleProperty("height", Math.max(3, displayedRows * 9 + 6) + "px");
+            boolean mediaOrPages = detail.description().hasImages() || detail.paginated();
+            int dialogLimit = Math.max(previewLimit + 1, Config.DESCRIPTION_DIALOG_LINES.get());
+            boolean openDialog = QuestLogSnapshot.descriptionNeedsDialog(
+                    detail.description().hasImages(), detail.paginated(), descriptionRows, dialogLimit);
+            if (mediaOrPages || descriptionRows > previewLimit) {
+                String action = openDialog ? "read_description"
+                        : descriptionExpanded ? "collapse_description" : "expand_description";
                 Element expand = append(document, content, "detail-expand-button",
-                        Component.translatable("ui.portholequest.expand_description").getString(), 0);
+                        Component.translatable("ui.portholequest." + action).getString(), state.questId());
+                expandButton = expand;
+                expand.setAttribute("aria-expanded", Boolean.toString(descriptionExpanded));
                 expand.setAttribute("role", "button");
                 expand.addEventListener("click", event -> {
                     if (!currentBinding.getAsBoolean() || !(event instanceof MouseEvent mouse) || mouse.button != 0) return;
-                    boolean collapsed = "quest-description collapsed".equals(description.getAttribute("class"));
-                    description.setAttribute("class", collapsed ? "quest-description" : "quest-description collapsed");
-                    expand.setTextContent(Component.translatable(collapsed
-                            ? "ui.portholequest.collapse_description"
-                            : "ui.portholequest.expand_description").getString());
+                    if (openDialog) openDescription.accept(state.questId());
+                    else setDescriptionExpanded.accept(state.questId(),
+                            !Boolean.parseBoolean(expand.getAttribute("aria-expanded")));
                 });
             }
         }
@@ -129,32 +177,61 @@ public final class QuestDetailView {
                                 .withStyle(net.minecraft.ChatFormatting.GRAY))));
             }
         }
-        return new QuestDetailView(icons, content, tooltipTargets);
+        return new QuestDetailView(icons, content, tooltipTargets, descriptionText, descriptionContainer,
+                expandButton, descriptionPlacement, Config.DESCRIPTION_PREVIEW_LINES.get(), descriptionExpanded);
     }
 
-    private static boolean expandable(QuestLogSnapshot.QuestDetail detail) {
-        return detail.descriptionLines().size() > 5 && !detail.complexDescription() && !detail.paginated();
+    private static QuestDetailView emptyView() {
+        return new QuestDetailView(List.of(), null, List.of(), List.of(), null, null, null, 0, false);
+    }
+
+    public void setDescriptionExpanded(boolean expanded) {
+        if (descriptionContainer == null || descriptionPlacement == null || expandButton == null
+                || descriptionExpanded == expanded) return;
+        descriptionExpanded = expanded;
+        int rows = expanded ? descriptionPlacement.allLines().size()
+                : Math.min(previewRows, descriptionPlacement.allLines().size());
+        descriptionPlacement.setVisibleRows(rows);
+        descriptionPlacement.anchor().setInlineStyleProperty("height", (rows * 9) + "px");
+        descriptionContainer.setInlineStyleProperty("height", Math.max(3, rows * 9 + 6) + "px");
+        expandButton.setTextContent(Component.translatable(expanded
+                ? "ui.portholequest.collapse_description"
+                : "ui.portholequest.expand_description").getString());
+        expandButton.setAttribute("aria-expanded", Boolean.toString(expanded));
     }
 
     public void draw(GuiGraphics graphics, int left, int top, float scale) {
-        if (icons.isEmpty() || content == null) return;
+        if (content == null || icons.isEmpty() && descriptionText.isEmpty()) return;
         var pose = graphics.pose();
         pose.pushPose();
         try {
-            pose.translate(left, top, 300);
-            pose.scale(scale, scale, 1);
             var clip = content.getBoundingClientRect();
             graphics.enableScissor((int) Math.floor(left + clip.left * scale),
                     (int) Math.floor(top + clip.top * scale),
                     (int) Math.ceil(left + clip.right * scale),
                     (int) Math.ceil(top + clip.bottom * scale));
             try {
+                pose.translate(left, top, 300);
+                pose.scale(scale, scale, 1);
                 for (var placement : icons) {
                     var rect = placement.anchor().getBoundingClientRect();
                     pose.pushPose();
                     pose.translate((float) rect.x, (float) rect.y, 0);
                     placement.icon().draw(graphics, 0, 0, 16, 16);
                     pose.popPose();
+                }
+                for (var placement : descriptionText) {
+                    var rect = placement.anchor().getBoundingClientRect();
+                    for (int lineIndex = 0; lineIndex < placement.visibleRows(); lineIndex++) {
+                        FormattedCharSequence line = placement.allLines().get(lineIndex);
+                        ClickEvent hoveredClick = hoveredDescriptionStyle == null
+                                ? null : hoveredDescriptionStyle.getClickEvent();
+                        line = DescriptionTextLayout.highlightLink(line, hoveredClick);
+                        pose.pushPose();
+                        pose.translate((float) rect.x, (float) rect.y + lineIndex * 9, 0);
+                        graphics.drawString(Minecraft.getInstance().font, line, 0, 0, 0xff423027, false);
+                        pose.popPose();
+                    }
                 }
             } finally {
                 graphics.disableScissor();
@@ -171,6 +248,49 @@ public final class QuestDetailView {
             if (contains(target.element().getBoundingClientRect(), x, y)) return target.lines();
         }
         return List.of();
+    }
+
+    public Style styleAt(double x, double y) {
+        for (var placement : descriptionText) {
+            var rect = placement.anchor().getBoundingClientRect();
+            if (!contains(rect, x, y)) continue;
+            int row = Math.max(0, (int) ((y - rect.top) / 9));
+            if (row >= placement.visibleRows()) return null;
+            return DescriptionTextLayout.styleAtWidth(placement.allLines().get(row),
+                    Math.max(0, x - rect.left), Minecraft.getInstance().font);
+        }
+        return null;
+    }
+
+    public void setHoveredDescriptionStyle(Style style) {
+        hoveredDescriptionStyle = style != null && style.getClickEvent() != null ? style : null;
+    }
+
+    public boolean isDescriptionAt(double x, double y) {
+        for (var placement : descriptionText) {
+            if (contains(placement.anchor().getBoundingClientRect(), x, y)) return true;
+        }
+        return false;
+    }
+
+    private static final class TextPlacement {
+        private final Component component;
+        private final List<FormattedCharSequence> allLines;
+        private final Element anchor;
+        private int visibleRows;
+
+        private TextPlacement(Component component, List<FormattedCharSequence> allLines, int visibleRows, Element anchor) {
+            this.component = component;
+            this.allLines = List.copyOf(allLines);
+            this.visibleRows = visibleRows;
+            this.anchor = anchor;
+        }
+
+        private List<FormattedCharSequence> allLines() { return allLines; }
+        private Element anchor() { return anchor; }
+        private int visibleRows() { return visibleRows; }
+        private void setVisibleRows(int visibleRows) { this.visibleRows = visibleRows; }
+        private Component component() { return component; }
     }
 
     private record IconPlacement(Icon icon, Element anchor) {

@@ -16,6 +16,7 @@ import ink.myumoon.portholequest.client.ui.ChapterGroupTabView;
 import ink.myumoon.portholequest.client.ui.DetailHeaderView;
 import ink.myumoon.portholequest.client.ui.ChapterDetailView;
 import ink.myumoon.portholequest.client.ui.QuestDetailView;
+import ink.myumoon.portholequest.client.ui.DescriptionDialog;
 import ink.myumoon.portholequest.client.input.ChapterClickSequence;
 import ink.myumoon.portholequest.model.ChapterGroupTabs;
 import ink.myumoon.portholequest.model.GroupSelection;
@@ -26,14 +27,18 @@ import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public final class PortholeQuestScreen extends ApricityScreen {
@@ -65,11 +70,14 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private final ScreenStateHistory detailHistory;
     private DetailHeaderView detailHeader;
     private QuestDetailView questDetail;
+    private DescriptionDialog descriptionDialog;
+    private DescriptionDialog.State pendingDescriptionReturn;
     private List<QuestLogView.HoverTarget> hoverTargets = List.of();
     private final ChapterClickSequence chapterClicks = new ChapterClickSequence();
     private boolean chapterClickedThisRelease;
     private boolean pressedFrameBack;
     private long detailOpenedAt;
+    private boolean descriptionExpanded;
 
     public PortholeQuestScreen(QuestLogSnapshot snapshot, ListState state, Consumer<ListState> saveState) {
         super("screens/quest_log.html");
@@ -80,6 +88,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         this.expanded = new HashMap<>(state.expanded());
         this.listScroll = state.scrollTop();
         this.detailScroll = state.detailScroll();
+        this.descriptionExpanded = state.descriptionExpanded();
         this.detail = ScreenViewState.fromSession(state.detail()).retainValid(snapshot);
         this.saveState = saveState;
         this.requestedGroup = state.group().retainValid(snapshot);
@@ -160,6 +169,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (descriptionDialog != null) {
+            descriptionDialog.scroll(scrollY);
+            updateDescriptionDialogHover(mouseX, mouseY);
+            return true;
+        }
         chapterClicks.reset();
         if (tabAt(mouseX, mouseY) != null) return true;
         MouseEvent event = pointerEvent("wheel", mouseX, mouseY, -1);
@@ -171,6 +185,30 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (descriptionDialog != null) {
+            float scale = getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale();
+            DescriptionDialog.ClickResult result = descriptionDialog.mouseClicked(
+                    mouseX, mouseY, button, frameLeft, frameTop, scale);
+            if (result == DescriptionDialog.ClickResult.CLOSE) {
+                descriptionDialog = null;
+            } else if (result == DescriptionDialog.ClickResult.NONE && button == 0) {
+                Style style = descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop, scale);
+                if (style != null) handleDescriptionClick(style);
+            }
+            if (descriptionDialog != null) descriptionDialog.setHoveredStyle(null);
+            return true;
+        }
+        if (button == 0 && questDetail != null && detail.kind() == ScreenViewState.Kind.QUEST) {
+            Document document = getLinkedDocument();
+            if (document != null && !document.isDisposed()) {
+                Position local = document.guiToDocumentPosition(new Position(mouseX, mouseY));
+                Style style = questDetail.styleAt(local.x, local.y);
+                if (style != null && style.getClickEvent() != null) {
+                    handleDescriptionClick(style);
+                    return true;
+                }
+            }
+        }
         pressedFrameBack = false;
         var tab = tabAt(mouseX, mouseY);
         if (tab != null) {
@@ -187,6 +225,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (descriptionDialog != null) return true;
         if (button == 0 && pressedFrameBack) {
             pressedFrameBack = false;
             if (isFrameBorder(mouseX, mouseY)) returnFromHistory();
@@ -208,6 +247,22 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
+        if (descriptionDialog != null) {
+            Style style = descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop,
+                    getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale());
+            descriptionDialog.setHoveredStyle(style);
+            previousMouse = new Position(mouseX, mouseY);
+            return;
+        }
+        Style descriptionStyle = null;
+        if (questDetail != null && detail.kind() == ScreenViewState.Kind.QUEST) {
+            Document document = getLinkedDocument();
+            if (document != null && !document.isDisposed()) {
+                Position local = document.guiToDocumentPosition(new Position(mouseX, mouseY));
+                descriptionStyle = questDetail.styleAt(local.x, local.y);
+            }
+        }
+        if (questDetail != null) questDetail.setHoveredDescriptionStyle(descriptionStyle);
         MouseEvent event = pointerEvent("mousemove", mouseX, mouseY, -1);
         if (previousMouse != null) {
             event.movementX = mouseX - previousMouse.x;
@@ -260,6 +315,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 }
                 if (document == boundDocument && document.isCurrentGeneration(boundGeneration) && !detailDirty
                         && questDetail != null) {
+                    Position localMouse = document.guiToDocumentPosition(new Position(mouseX, mouseY));
+                    questDetail.setHoveredDescriptionStyle(questDetail.styleAt(localMouse.x, localMouse.y));
                     questDetail.draw(graphics, frameLeft, frameTop, viewport.renderScale());
                 }
             }
@@ -270,13 +327,32 @@ public final class PortholeQuestScreen extends ApricityScreen {
             for (var tab : tabs) if (tab.selection().equals(effectiveGroup)) {
                 ChapterGroupTabView.draw(graphics, tab, true, frameLeft, frameTop, tabScale);
             }
+            if (descriptionDialog != null) {
+                graphics.flush();
+                descriptionDialog.draw(graphics, font, frameLeft, frameTop, tabScale, width, height);
+                graphics.flush();
+            }
             var hovered = tabAt(mouseX, mouseY);
             graphics.pose().pushPose();
-            graphics.pose().translate(0, 0, 500);
+            graphics.pose().translate(0, 0, descriptionDialog == null ? 500 : 700);
             try {
-                if (hovered != null) graphics.renderTooltip(font, Component.literal(hovered.title()), mouseX, mouseY);
+                if (descriptionDialog != null) {
+                    Style style = descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop, tabScale);
+                    if (style != null) graphics.renderComponentHoverEffect(font, style, mouseX, mouseY);
+                    else {
+                        Component controlTooltip = descriptionDialog.controlTooltipAt(
+                                mouseX, mouseY, frameLeft, frameTop, tabScale);
+                        if (controlTooltip != null) graphics.renderTooltip(font, controlTooltip, mouseX, mouseY);
+                    }
+                } else if (hovered != null) graphics.renderTooltip(font, Component.literal(hovered.title()), mouseX, mouseY);
                 else {
                     drawQuestTooltip(graphics, mouseX, mouseY);
+                    if (questDetail != null) {
+                        Position local = document == null ? new Position(0, 0)
+                                : document.guiToDocumentPosition(new Position(mouseX, mouseY));
+                        Style style = questDetail.styleAt(local.x, local.y);
+                        if (style != null) graphics.renderComponentHoverEffect(font, style, mouseX, mouseY);
+                    }
                     drawQuestDetailTooltip(graphics, mouseX, mouseY);
                 }
             } finally {
@@ -289,6 +365,28 @@ public final class PortholeQuestScreen extends ApricityScreen {
             FrameTimingHud.endFrame();
             Client.drawFrameTimingHud(graphics);
         }
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (descriptionDialog != null) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                descriptionDialog = null;
+                return true;
+            }
+            if (keyCode == GLFW.GLFW_KEY_PAGE_UP) {
+                descriptionDialog.page(-1);
+                descriptionDialog.setHoveredStyle(null);
+                return true;
+            }
+            if (keyCode == GLFW.GLFW_KEY_PAGE_DOWN) {
+                descriptionDialog.page(1);
+                descriptionDialog.setHoveredStyle(null);
+                return true;
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     private void drawFrameBack(GuiGraphics graphics, double mouseX, double mouseY, float scale) {
@@ -313,7 +411,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
         captureDetailScroll();
         refreshTabs();
         Document document = getLinkedDocument();
-        if (listDirty || document != boundDocument || document != null && document.getRefreshGeneration() != boundGeneration) {
+        if (listDirty || detailDirty || chapterDetailDirty || document != boundDocument
+                || document != null && document.getRefreshGeneration() != boundGeneration) {
             try {
                 bindCurrentDocument();
             } catch (RuntimeException exception) {
@@ -331,6 +430,16 @@ public final class PortholeQuestScreen extends ApricityScreen {
         captureListScroll();
         captureDetailScroll();
         snapshot = updated;
+        if (!detail.equals(detail.retainValid(updated))) descriptionExpanded = false;
+        if (descriptionDialog != null) {
+            QuestLogSnapshot.QuestDetail current = updated.questDetails().get(descriptionDialog.questId());
+            if (current == null || current.descriptionHidden()) descriptionDialog = null;
+            else {
+                QuestLogSnapshot.Entry entry = findQuestEntry(descriptionDialog.questId());
+                descriptionDialog = new DescriptionDialog(descriptionDialog.questId(),
+                        entry == null ? "" : entry.title(), current.description(), descriptionDialog.state());
+            }
+        }
         pruneDetailHistory();
         detailDirty = true;
         chapterClicks.reset();
@@ -376,11 +485,12 @@ public final class PortholeQuestScreen extends ApricityScreen {
         }
         if (detail.kind() == ScreenViewState.Kind.QUEST && rebindDetail) {
             questDetail = QuestDetailView.bind(document, snapshot, detail,
-                    () -> getLinkedDocument() == document && document.isCurrentGeneration(generation) && bindingVersion == version,
-                    this::openQuest);
+                    () -> getLinkedDocument() == document && document.isCurrentGeneration(generation),
+                    this::openQuest, this::openDescription, this::setDescriptionExpanded,
+                    descriptionExpanded);
         } else if (detail.kind() == ScreenViewState.Kind.CHAPTER && (rebindDetail || chapterDetailDirty)) {
             ChapterDetailView.bind(document, snapshot, filter, detail,
-                    () -> getLinkedDocument() == document && document.isCurrentGeneration(generation) && bindingVersion == version,
+                    () -> getLinkedDocument() == document && document.isCurrentGeneration(generation),
                     this::openQuest);
         }
         document.commitRenderState();
@@ -501,15 +611,101 @@ public final class PortholeQuestScreen extends ApricityScreen {
         selectDetail(ScreenViewState.quest(entry));
     }
 
+    private void openDescription(long questId) {
+        QuestLogSnapshot.QuestDetail quest = snapshot.questDetails().get(questId);
+        if (quest != null && !quest.descriptionHidden()) {
+            QuestLogSnapshot.Entry entry = findQuestEntry(questId);
+            descriptionDialog = new DescriptionDialog(questId, entry == null ? "" : entry.title(), quest.description());
+        }
+    }
+
+    private void updateDescriptionDialogHover(double mouseX, double mouseY) {
+        if (descriptionDialog == null) return;
+        Document document = getLinkedDocument();
+        float scale = document == null ? 1 : document.getViewport().renderScale();
+        descriptionDialog.setHoveredStyle(descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop, scale));
+    }
+
+    private void setDescriptionExpanded(long questId, boolean value) {
+        if (detail.kind() != ScreenViewState.Kind.QUEST || detail.questId() != questId || questDetail == null) return;
+        descriptionExpanded = value;
+        questDetail.setDescriptionExpanded(value);
+        Document document = getLinkedDocument();
+        if (document == null || document.isDisposed()) return;
+        captureDetailScroll();
+        document.commitRenderState();
+        var detailContent = document.querySelector("#detail-content");
+        if (detailContent != null) {
+            detailContent.setScrollTop(detailScroll);
+            detailScroll = detailContent.getTargetScrollTop();
+        }
+    }
+
+    private void handleDescriptionClick(Style style) {
+        ClickEvent click = style.getClickEvent();
+        if (click != null && click.getAction() == ClickEvent.Action.CHANGE_PAGE) {
+            String[] parts = click.getValue().split("/");
+            try {
+                long targetId = Long.parseUnsignedLong(parts[0], 16);
+                if (descriptionDialog != null && targetId == descriptionDialog.questId()) {
+                    if (parts.length > 1) descriptionDialog.pageTo(Integer.parseInt(parts[1]) - 1);
+                    return;
+                }
+                if (descriptionDialog == null && detail.kind() == ScreenViewState.Kind.QUEST
+                        && targetId == detail.questId() && parts.length > 1) {
+                    openDescription(targetId);
+                    if (descriptionDialog != null) descriptionDialog.pageTo(Integer.parseInt(parts[1]) - 1);
+                    return;
+                }
+                QuestLogSnapshot.Entry target = findQuestEntry(targetId);
+                if (target != null && !ScreenViewState.quest(target).equals(detail)) {
+                    if (descriptionDialog != null) {
+                        pendingDescriptionReturn = descriptionDialog.state();
+                        descriptionDialog = null;
+                    }
+                    openQuest(target);
+                    if (parts.length > 1) {
+                        QuestLogSnapshot.QuestDetail targetDetail = snapshot.questDetails().get(targetId);
+                        if (targetDetail != null && !targetDetail.descriptionHidden()) {
+                            openDescription(targetId);
+                            if (descriptionDialog != null) {
+                                descriptionDialog.pageTo(Integer.parseInt(parts[1]) - 1);
+                            }
+                        }
+                    }
+                    pendingDescriptionReturn = null;
+                }
+            } catch (NumberFormatException ignored) {
+                PortholeQuest.LOGGER.warn("Ignoring invalid FTBQ description link: {}", click.getValue());
+            }
+            return;
+        }
+        handleComponentClicked(style);
+    }
+
+    private QuestLogSnapshot.Entry findQuestEntry(long questId) {
+        QuestLogSnapshot.Entry linkedFallback = null;
+        for (var group : snapshot.groups()) for (var chapter : group.chapters()) {
+            for (var entry : chapter.entries()) {
+                if (entry.questId() != questId) continue;
+                if (!entry.link()) return entry;
+                if (linkedFallback == null) linkedFallback = entry;
+            }
+        }
+        return linkedFallback;
+    }
+
     private void selectDetail(ScreenViewState requested) {
         ScreenViewState next = requested.retainValid(snapshot);
         // Native FTBQ blocks clicks on quests whose details are hidden until startable.
         if (!requested.equals(next) || next.equals(detail)) return;
         captureListScroll();
         captureDetailScroll();
-        detailHistory.push(detail, detailScroll);
+        detailHistory.push(detail, detailScroll, descriptionExpanded, pendingDescriptionReturn);
+        pendingDescriptionReturn = null;
         detail = next;
         detailScroll = 0;
+        descriptionExpanded = false;
         detailDirty = true;
         detailOpenedAt = Util.getMillis();
         listDirty = true;
@@ -527,9 +723,24 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 state -> state.equals(state.retainValid(snapshot)));
         ScreenViewState next = previous == null ? ScreenViewState.BLANK : previous.state();
         double nextScroll = previous == null ? 0 : previous.detailScroll();
-        if (detail.equals(next) && Double.compare(detailScroll, nextScroll) == 0) return;
+        boolean nextDescriptionExpanded = previous != null && previous.descriptionExpanded();
+        Optional<DescriptionDialog.State> descriptionReturn = previous == null
+                ? Optional.empty() : previous.descriptionReturn();
+        if (descriptionReturn.isPresent() && next.kind() == ScreenViewState.Kind.QUEST
+                && descriptionReturn.get().questId() == next.questId()) {
+            DescriptionDialog.State state = descriptionReturn.get();
+            QuestLogSnapshot.QuestDetail source = snapshot.questDetails().get(state.questId());
+            if (source != null && !source.descriptionHidden()) {
+                QuestLogSnapshot.Entry entry = findQuestEntry(state.questId());
+                descriptionDialog = new DescriptionDialog(state.questId(), entry == null ? "" : entry.title(),
+                        source.description(), state);
+            }
+        }
+        if (detail.equals(next) && Double.compare(detailScroll, nextScroll) == 0
+                && descriptionExpanded == nextDescriptionExpanded) return;
         detail = next;
         detailScroll = nextScroll;
+        descriptionExpanded = nextDescriptionExpanded;
         detailDirty = true;
         detailOpenedAt = Util.getMillis();
         listDirty = true;
@@ -593,7 +804,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
         captureDetailScroll();
         ScreenViewState validDetail = detail.retainValid(snapshot);
         return new ListState(filter, defaultExpanded, expanded, listScroll, requestedGroup,
-                validDetail.toSession(), detailScroll);
+                validDetail.toSession(), detailScroll,
+                validDetail.kind() == ScreenViewState.Kind.QUEST && descriptionExpanded);
     }
 
     @Override
@@ -610,7 +822,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
         detailHeader = null;
         questDetail = null;
         detailHistory.clear();
+        pendingDescriptionReturn = null;
+        descriptionDialog = null;
         chapterClicks.reset();
         super.removed();
     }
+
 }

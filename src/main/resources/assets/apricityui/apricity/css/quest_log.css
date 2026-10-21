@@ -77,7 +77,6 @@ body {
 #detail-content .detail-section-label { padding: 4px 3px 2px; color: #776c60; border-bottom: 1px solid #bda57f; }
 .detail-note { padding: 5px 3px; color: #a79779; word-break: break-all; }
 .quest-description { padding: 3px; line-height: 9px; word-break: break-all; }
-.quest-description.collapsed { max-height: 45px; overflow: hidden; }
 .quest-description-line { min-height: 9px; }
 .detail-expand-button { margin: 2px 3px; padding: 2px 3px; height: 14px; border: 1px solid #9a8060; background: #d0bb95; text-align: center; cursor: pointer; }
 .quest-task-row { position: relative; min-height: 27px; padding: 3px 3px 3px 23px; border-top: 1px solid #bda57f; word-break: break-all; }

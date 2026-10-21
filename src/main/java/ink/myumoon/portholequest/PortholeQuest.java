@@ -3,12 +3,10 @@ package ink.myumoon.portholequest;
 import com.mojang.logging.LogUtils;
 import ink.myumoon.portholequest.registry.PQItems;
 import ink.myumoon.portholequest.registry.PQRegistries;
-import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import org.slf4j.Logger;
 

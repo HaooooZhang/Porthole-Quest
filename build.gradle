@@ -230,6 +230,14 @@ def checkScreenStateHistory = tasks.register('checkScreenStateHistory', JavaExec
 }
 tasks.named('check') { dependsOn checkScreenStateHistory }
 
+def checkQuestDescriptionSnapshot = tasks.register('checkQuestDescriptionSnapshot', JavaExec) {
+    dependsOn compileChecks
+    classpath = files(checkClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.model.QuestDescriptionSnapshotCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkQuestDescriptionSnapshot }
+
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
 idea {
     module {

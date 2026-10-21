@@ -46,9 +46,10 @@ public final class DetailSelectionCheck {
         var sessionDetail = selected.toSession();
         check(ScreenViewState.fromSession(sessionDetail).equals(selected), "Session preserves QuestLink source identity");
         var restored = new GuiSessionCache.ListState(ListFilter.ACTIVE, true, Map.of(), 17,
-                GroupSelection.group(999), sessionDetail, 23);
+                GroupSelection.group(999), sessionDetail, 23, true);
         check(restored.detailScroll() == 23 && restored.detail().entryId() == 2,
                 "Session stores independent detail scroll and entry identity");
+        check(restored.descriptionExpanded(), "Session restores current description expansion state");
         check(QuestLogSnapshot.hasIntermediateProgress(true, false, 50, true), "Intermediate nonbinary progress");
         check(!QuestLogSnapshot.hasIntermediateProgress(true, false, 50, false), "Binary progress not shown");
         check(!QuestLogSnapshot.hasIntermediateProgress(true, false, 0, true)
