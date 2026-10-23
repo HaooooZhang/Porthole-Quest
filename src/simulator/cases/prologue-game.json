@@ -1,0 +1,490 @@
+{
+  "format": "portholequest-flowchart-v1",
+  "title": "游戏流程图 · 5080825325973976573",
+  "source": "# layout r33-center-branch-sides-1\nQ238f287437bc103b # The First Day, Say Hello World！\nQ447f97cddf3d1f02 # 工作台\nQ570d80e772eb563f # 任务日志\nQ6a1df77c318decb2 # 石镐\nQ57f61fc1f7518218 # 铁锭\nQ66fcbf298d164cc7 # 勾选标记\nQbdf7c6f4e123a55 # 经验等级: 1\nQ5ea917794a1370c # 进度: 整装上阵\nQ3f50d756e84b54be # 勾选标记\nQ6333d5c695981d8 # 勾选标记\nQ6103a8df8e1311a6 # 进度: 这不是鳞甲么？\nQ611fd3c1a0f80e49 # 进入生物群系: minecraft:plains\nQ3cafac00e57b3fcc # 钻石\nQ553c88346fbb84e3 # 勾选标记\nQ21bc63c23ef0ad54 # 勾选标记\nQ7cabda35cddf9048 # 勾选标记\nQ599edfd20841e963 # 钻石镐\nQ3ae301e26926c185 # 黑曜石\nQ6f9725bd6e96713b # 进入维度: minecraft:the_nether\nQ238f287437bc103b -\u003e Q447f97cddf3d1f02\nQ447f97cddf3d1f02 -\u003e Q570d80e772eb563f\nQ570d80e772eb563f -\u003e Q6a1df77c318decb2\nQ6a1df77c318decb2 -\u003e Q57f61fc1f7518218\nQ6a1df77c318decb2 -\u003e Q66fcbf298d164cc7\nQ6a1df77c318decb2 -\u003e Qbdf7c6f4e123a55\nQ57f61fc1f7518218 -\u003e Q5ea917794a1370c\nQ66fcbf298d164cc7 -\u003e Q3f50d756e84b54be\nQ66fcbf298d164cc7 -\u003e Q6333d5c695981d8\nQbdf7c6f4e123a55 -\u003e Q6103a8df8e1311a6\nQbdf7c6f4e123a55 -\u003e Q611fd3c1a0f80e49\nQ5ea917794a1370c -\u003e Q3cafac00e57b3fcc\nQ3f50d756e84b54be -\u003e Q553c88346fbb84e3\nQ3f50d756e84b54be -\u003e Q21bc63c23ef0ad54\nQ6103a8df8e1311a6 -\u003e Q7cabda35cddf9048\nQ611fd3c1a0f80e49 -\u003e Q7cabda35cddf9048\nQ3cafac00e57b3fcc -\u003e Q599edfd20841e963\nQ7cabda35cddf9048 -\u003e Q599edfd20841e963\nQ599edfd20841e963 -\u003e Q3ae301e26926c185\nQ3ae301e26926c185 -\u003e Q6f9725bd6e96713b\nfocus: Q238f287437bc103b\n",
+  "result": {
+    "revision": "r33-center-branch-sides-1",
+    "nodes": [
+      {
+        "external": false,
+        "x": 12,
+        "y": 242,
+        "layer": 0,
+        "row": 0,
+        "id": "Q238f287437bc103b"
+      },
+      {
+        "external": false,
+        "x": 84,
+        "y": 242,
+        "layer": 1,
+        "row": 0,
+        "id": "Q447f97cddf3d1f02"
+      },
+      {
+        "external": false,
+        "x": 156,
+        "y": 242,
+        "layer": 2,
+        "row": 0,
+        "id": "Q570d80e772eb563f"
+      },
+      {
+        "external": false,
+        "x": 228,
+        "y": 242,
+        "layer": 3,
+        "row": 0,
+        "id": "Q6a1df77c318decb2"
+      },
+      {
+        "external": false,
+        "x": 300,
+        "y": 242,
+        "layer": 4,
+        "row": 0,
+        "id": "Q57f61fc1f7518218"
+      },
+      {
+        "external": false,
+        "x": 300,
+        "y": 196,
+        "layer": 4,
+        "row": -1,
+        "id": "Q66fcbf298d164cc7"
+      },
+      {
+        "external": false,
+        "x": 300,
+        "y": 426,
+        "layer": 4,
+        "row": 4,
+        "id": "Qbdf7c6f4e123a55"
+      },
+      {
+        "external": false,
+        "x": 372,
+        "y": 242,
+        "layer": 5,
+        "row": 0,
+        "id": "Q5ea917794a1370c"
+      },
+      {
+        "external": false,
+        "x": 372,
+        "y": 12,
+        "layer": 5,
+        "row": -5,
+        "id": "Q3f50d756e84b54be"
+      },
+      {
+        "external": false,
+        "x": 372,
+        "y": 150,
+        "layer": 5,
+        "row": -2,
+        "id": "Q6333d5c695981d8"
+      },
+      {
+        "external": false,
+        "x": 372,
+        "y": 334,
+        "layer": 5,
+        "row": 2,
+        "id": "Q6103a8df8e1311a6"
+      },
+      {
+        "external": false,
+        "x": 372,
+        "y": 288,
+        "layer": 5,
+        "row": 1,
+        "id": "Q611fd3c1a0f80e49"
+      },
+      {
+        "external": false,
+        "x": 444,
+        "y": 242,
+        "layer": 6,
+        "row": 0,
+        "id": "Q3cafac00e57b3fcc"
+      },
+      {
+        "external": false,
+        "x": 444,
+        "y": 58,
+        "layer": 6,
+        "row": -4,
+        "id": "Q553c88346fbb84e3"
+      },
+      {
+        "external": false,
+        "x": 444,
+        "y": 104,
+        "layer": 6,
+        "row": -3,
+        "id": "Q21bc63c23ef0ad54"
+      },
+      {
+        "external": false,
+        "x": 444,
+        "y": 380,
+        "layer": 6,
+        "row": 3,
+        "id": "Q7cabda35cddf9048"
+      },
+      {
+        "external": false,
+        "x": 516,
+        "y": 242,
+        "layer": 7,
+        "row": 0,
+        "id": "Q599edfd20841e963"
+      },
+      {
+        "external": false,
+        "x": 588,
+        "y": 242,
+        "layer": 8,
+        "row": 0,
+        "id": "Q3ae301e26926c185"
+      },
+      {
+        "external": false,
+        "x": 660,
+        "y": 242,
+        "layer": 9,
+        "row": 0,
+        "id": "Q6f9725bd6e96713b"
+      }
+    ],
+    "edges": [
+      {
+        "to": "Q447f97cddf3d1f02",
+        "points": [
+          [
+            44,
+            258
+          ],
+          [
+            84,
+            258
+          ]
+        ],
+        "from": "Q238f287437bc103b"
+      },
+      {
+        "to": "Q570d80e772eb563f",
+        "points": [
+          [
+            116,
+            258
+          ],
+          [
+            156,
+            258
+          ]
+        ],
+        "from": "Q447f97cddf3d1f02"
+      },
+      {
+        "to": "Q6a1df77c318decb2",
+        "points": [
+          [
+            188,
+            258
+          ],
+          [
+            228,
+            258
+          ]
+        ],
+        "from": "Q570d80e772eb563f"
+      },
+      {
+        "to": "Q57f61fc1f7518218",
+        "points": [
+          [
+            260,
+            258
+          ],
+          [
+            300,
+            258
+          ]
+        ],
+        "from": "Q6a1df77c318decb2"
+      },
+      {
+        "to": "Q66fcbf298d164cc7",
+        "points": [
+          [
+            244,
+            242
+          ],
+          [
+            244,
+            212
+          ],
+          [
+            300,
+            212
+          ]
+        ],
+        "from": "Q6a1df77c318decb2"
+      },
+      {
+        "to": "Qbdf7c6f4e123a55",
+        "points": [
+          [
+            244,
+            274
+          ],
+          [
+            244,
+            442
+          ],
+          [
+            300,
+            442
+          ]
+        ],
+        "from": "Q6a1df77c318decb2"
+      },
+      {
+        "to": "Q5ea917794a1370c",
+        "points": [
+          [
+            332,
+            258
+          ],
+          [
+            372,
+            258
+          ]
+        ],
+        "from": "Q57f61fc1f7518218"
+      },
+      {
+        "to": "Q3f50d756e84b54be",
+        "points": [
+          [
+            316,
+            196
+          ],
+          [
+            316,
+            28
+          ],
+          [
+            372,
+            28
+          ]
+        ],
+        "from": "Q66fcbf298d164cc7"
+      },
+      {
+        "to": "Q6333d5c695981d8",
+        "points": [
+          [
+            332,
+            212
+          ],
+          [
+            388,
+            212
+          ],
+          [
+            388,
+            182
+          ]
+        ],
+        "from": "Q66fcbf298d164cc7"
+      },
+      {
+        "to": "Q6103a8df8e1311a6",
+        "points": [
+          [
+            332,
+            442
+          ],
+          [
+            388,
+            442
+          ],
+          [
+            388,
+            366
+          ]
+        ],
+        "from": "Qbdf7c6f4e123a55"
+      },
+      {
+        "to": "Q611fd3c1a0f80e49",
+        "points": [
+          [
+            316,
+            426
+          ],
+          [
+            316,
+            304
+          ],
+          [
+            372,
+            304
+          ]
+        ],
+        "from": "Qbdf7c6f4e123a55"
+      },
+      {
+        "to": "Q3cafac00e57b3fcc",
+        "points": [
+          [
+            404,
+            258
+          ],
+          [
+            444,
+            258
+          ]
+        ],
+        "from": "Q5ea917794a1370c"
+      },
+      {
+        "to": "Q553c88346fbb84e3",
+        "points": [
+          [
+            404,
+            28
+          ],
+          [
+            460,
+            28
+          ],
+          [
+            460,
+            58
+          ]
+        ],
+        "from": "Q3f50d756e84b54be"
+      },
+      {
+        "to": "Q21bc63c23ef0ad54",
+        "points": [
+          [
+            388,
+            44
+          ],
+          [
+            388,
+            120
+          ],
+          [
+            444,
+            120
+          ]
+        ],
+        "from": "Q3f50d756e84b54be"
+      },
+      {
+        "to": "Q7cabda35cddf9048",
+        "points": [
+          [
+            404,
+            350
+          ],
+          [
+            460,
+            350
+          ],
+          [
+            460,
+            380
+          ]
+        ],
+        "from": "Q6103a8df8e1311a6"
+      },
+      {
+        "to": "Q7cabda35cddf9048",
+        "points": [
+          [
+            404,
+            304
+          ],
+          [
+            460,
+            304
+          ],
+          [
+            460,
+            380
+          ]
+        ],
+        "from": "Q611fd3c1a0f80e49"
+      },
+      {
+        "to": "Q599edfd20841e963",
+        "points": [
+          [
+            476,
+            258
+          ],
+          [
+            516,
+            258
+          ]
+        ],
+        "from": "Q3cafac00e57b3fcc"
+      },
+      {
+        "to": "Q599edfd20841e963",
+        "points": [
+          [
+            476,
+            396
+          ],
+          [
+            532,
+            396
+          ],
+          [
+            532,
+            274
+          ]
+        ],
+        "from": "Q7cabda35cddf9048"
+      },
+      {
+        "to": "Q3ae301e26926c185",
+        "points": [
+          [
+            548,
+            258
+          ],
+          [
+            588,
+            258
+          ]
+        ],
+        "from": "Q599edfd20841e963"
+      },
+      {
+        "to": "Q6f9725bd6e96713b",
+        "points": [
+          [
+            620,
+            258
+          ],
+          [
+            660,
+            258
+          ]
+        ],
+        "from": "Q3ae301e26926c185"
+      }
+    ],
+    "width": 704,
+    "height": 516
+  }
+}

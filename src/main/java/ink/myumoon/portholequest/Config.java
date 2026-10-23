@@ -3,12 +3,13 @@ package ink.myumoon.portholequest;
 import ink.myumoon.portholequest.model.ListFilter;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/** Client defaults only. Live GUI state belongs to the current-world session cache. */
+/** Client journal settings. Live GUI state belongs to the current-world session cache. */
 public final class Config {
     public enum BlankDetailMode { IMAGE, BOOK, EMPTY }
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.EnumValue<ListFilter> DEFAULT_LIST_FILTER;
     public static final ModConfigSpec.BooleanValue DEFAULT_CHAPTER_EXPANDED;
+    public static final ModConfigSpec.BooleanValue FLOWCHART_ENABLED;
     public static final ModConfigSpec.IntValue MAX_DETAIL_HISTORY;
     public static final ModConfigSpec.IntValue DESCRIPTION_PREVIEW_LINES;
     public static final ModConfigSpec.IntValue DESCRIPTION_DIALOG_LINES;
@@ -28,6 +29,9 @@ public final class Config {
                 .defineEnum("defaultListFilter", ListFilter.ACTIVE);
         DEFAULT_CHAPTER_EXPANDED = builder.comment("Initial expansion for chapters without a cached state.")
                 .define("defaultChapterExpanded", true);
+        FLOWCHART_ENABLED = builder.comment("Allow the quest flowchart preview. Set false to hide its button and disable its shortcut.",
+                        "Modpack authors can disable dependency previews to preserve discovery. This is a client setting, not a server-enforced lock.")
+                .define("flowchartEnabled", true);
         MAX_DETAIL_HISTORY = builder.comment("Maximum number of detail navigation history entries kept while the journal is open.",
                         "When exceeded, the oldest entries are discarded first.")
                 .defineInRange("maxDetailHistory", 32, 1, 256);

@@ -13,6 +13,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.function.BooleanSupplier;
+
 /** AUI owns header layout and subtitle wrapping; native MC draws Library icons and a pixel-aligned marquee. */
 public final class DetailHeaderView {
     private static final int BOOK_TITLE_SCALE = 2;
@@ -47,7 +49,8 @@ public final class DetailHeaderView {
                 ? 0xff000000 | Integer.parseInt(Config.BLANK_DETAIL_BOOK_TITLE_COLOR.get().substring(1), 16) : 0;
     }
 
-    public static DetailHeaderView bind(Document document, QuestLogSnapshot snapshot, ScreenViewState state, long openedAt) {
+    public static DetailHeaderView bind(Document document, QuestLogSnapshot snapshot, ScreenViewState state,
+                                        long openedAt, BooleanSupplier currentBinding, Runnable openFlowchart) {
         Element panel = document.querySelector("#detail-panel");
         panel.replaceChildren();
         if (state.kind() == ScreenViewState.Kind.BLANK) {
@@ -113,22 +116,30 @@ public final class DetailHeaderView {
         int headerHeight = Math.min(160, Math.max(64, 51 + subtitleLines * 9));
         header.setInlineStyleProperty("height", headerHeight + "px");
         panel.setAttribute("data-detail-header-height", Integer.toString(headerHeight));
-        appendActionFooter(document, panel);
+        appendActionFooter(document, panel, currentBinding, openFlowchart);
         return new DetailHeaderView(title, iconJson, iconAnchor, titleAnchor, openedAt,
                 null, null, 0, 0, 0, 0);
     }
 
     /** Visual-only D2 action affordances. R4 will add listeners and server actions. */
-    private static void appendActionFooter(Document document, Element panel) {
+    private static void appendActionFooter(Document document, Element panel,
+                                           BooleanSupplier currentBinding, Runnable openFlowchart) {
         Element footer = append(document, panel, "detail-footer", "");
         Element track = appendClass(document, footer, "detail-action-button detail-action-track", "");
         track.setAttribute("aria-disabled", "true");
         track.setAttribute("data-action", "track");
         appendClass(document, track, "detail-action-label", Component.translatable("ui.portholequest.action.track").getString());
+        if (!Config.FLOWCHART_ENABLED.get()) return;
         Element flowchart = appendClass(document, footer, "detail-action-button detail-action-flowchart", "");
-        flowchart.setAttribute("aria-disabled", "true");
+        flowchart.setAttribute("aria-disabled", "false");
         flowchart.setAttribute("data-action", "flowchart");
         appendClass(document, flowchart, "detail-action-label", Component.translatable("ui.portholequest.action.flowchart").getString());
+        flowchart.addEventListener("click", event -> {
+            if (currentBinding.getAsBoolean()
+                    && event instanceof com.sighs.apricityui.event.MouseEvent mouse && mouse.button == 0) {
+                openFlowchart.run();
+            }
+        });
     }
 
     private static Element append(Document document, Element parent, String id, String text) {

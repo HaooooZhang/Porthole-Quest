@@ -22,6 +22,7 @@ import net.minecraft.network.chat.contents.PlainTextContents;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -62,6 +63,7 @@ public final class FtbqBridge {
         var chapterHeaders = new HashMap<Long, QuestLogSnapshot.ChapterHeader>();
         var questHeaders = new HashMap<Long, QuestLogSnapshot.QuestHeader>();
         var questDetails = new HashMap<Long, QuestLogSnapshot.QuestDetail>();
+        var graphQuests = new LinkedHashMap<Long, QuestLogSnapshot.GraphQuest>();
         int groupIndex = 0;
         for (var group : file.getChapterGroups()) {
             int fileOrder = groupIndex++;
@@ -111,6 +113,8 @@ public final class FtbqBridge {
                                 quest.getIcon().getJson().toString(), detailsAvailable,
                                 QuestLogSnapshot.hasIntermediateProgress(entry.started(), entry.completed(),
                                         entry.progressPercent(), nonBinary)));
+                    graphQuests.putIfAbsent(quest.id, graphQuest(quest, chapter.id, group.id, entry,
+                            detailsAvailable, data, graphQuests.size()));
                         // Do not copy hidden descriptions, Tasks or Rewards into the
                         // detached UI snapshot when FTBQ denies opening the details.
                         if (detailsAvailable) questDetails.put(quest.id,
@@ -124,7 +128,8 @@ public final class FtbqBridge {
             }
         }
         return QuestLogReadResult.ready(new QuestLogSnapshot(fileGeneration, data.getTeamId(), file.isPauseGame(), groups,
-                chapterHeaders, questHeaders, questDetails, file.getTitle().getString(), file.getIcon().getJson().toString()));
+                chapterHeaders, questHeaders, questDetails, file.getTitle().getString(), file.getIcon().getJson().toString(),
+                List.copyOf(graphQuests.values())));
     }
 
     private static QuestLogSnapshot.QuestDetail detail(Quest quest, Chapter chapter,
@@ -263,6 +268,27 @@ public final class FtbqBridge {
         // Non-Quest dependencies still govern FTBQ unlocks, but do not create list rows.
         return new ChapterEntryOrder.Definition(entryId, quest.id,
                 quest.streamDependencies().filter(Quest.class::isInstance).map(dependency -> dependency.id).toList());
+    }
+
+    private static QuestLogSnapshot.GraphQuest graphQuest(Quest quest, long chapterId, long groupId,
+                                                          QuestLogSnapshot.Entry entry,
+                                                          boolean detailsAvailable, TeamData data, int stableOrder) {
+        var dependencies = quest.streamDependencies()
+                .filter(Quest.class::isInstance)
+                .map(Quest.class::cast)
+                .filter(dependency -> dependency.isValid() && dependency.isVisible(data))
+                .map(dependency -> dependency.id)
+                .toList();
+        var dependants = quest.getDependants().stream()
+                .filter(Quest.class::isInstance)
+                .map(Quest.class::cast)
+                .filter(dependant -> dependant.isValid() && dependant.isVisible(data))
+                .map(dependant -> dependant.id)
+                .toList();
+        return new QuestLogSnapshot.GraphQuest(quest.id, chapterId, groupId, quest.getTitle().getString(),
+                quest.getIcon().getJson().toString(), detailsAvailable, entry.started(), entry.completed(),
+                entry.canStart(), entry.progressPercent(), entry.unclaimedRewards(), entry.pinned(), stableOrder,
+                dependencies, dependants);
     }
 
     private static QuestLogSnapshot.Entry entry(long entryId, long chapterId, Quest quest,

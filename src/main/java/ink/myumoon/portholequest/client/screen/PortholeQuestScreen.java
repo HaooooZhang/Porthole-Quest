@@ -17,7 +17,11 @@ import ink.myumoon.portholequest.client.ui.DetailHeaderView;
 import ink.myumoon.portholequest.client.ui.ChapterDetailView;
 import ink.myumoon.portholequest.client.ui.QuestDetailView;
 import ink.myumoon.portholequest.client.ui.DescriptionDialog;
+import ink.myumoon.portholequest.client.ui.QuestFlowchartDialog;
+import ink.myumoon.portholequest.client.ui.QuestFlowchartDebug;
 import ink.myumoon.portholequest.client.input.ChapterClickSequence;
+import ink.myumoon.portholequest.client.input.PortholeKeyMappings;
+import ink.myumoon.portholequest.model.QuestFlowchartLayout;
 import ink.myumoon.portholequest.model.ChapterGroupTabs;
 import ink.myumoon.portholequest.model.GroupSelection;
 import ink.myumoon.portholequest.client.session.GuiSessionCache.ListState;
@@ -69,8 +73,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private ScreenViewState detail = ScreenViewState.BLANK;
     private final ScreenStateHistory detailHistory;
     private DetailHeaderView detailHeader;
+    private boolean boundFlowchartEnabled;
     private QuestDetailView questDetail;
     private DescriptionDialog descriptionDialog;
+    private QuestFlowchartDialog flowchartDialog;
     private DescriptionDialog.State pendingDescriptionReturn;
     private List<QuestLogView.HoverTarget> hoverTargets = List.of();
     private final ChapterClickSequence chapterClicks = new ChapterClickSequence();
@@ -169,6 +175,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (flowchartDialog != null) {
+            float scale = getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale();
+            flowchartDialog.scroll(mouseX, mouseY, scrollY, hasShiftDown(), frameLeft, frameTop, scale);
+            return true;
+        }
         if (descriptionDialog != null) {
             descriptionDialog.scroll(scrollY);
             updateDescriptionDialogHover(mouseX, mouseY);
@@ -185,6 +196,19 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (flowchartDialog != null) {
+            float scale = getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale();
+            QuestFlowchartDialog.ClickResult result = flowchartDialog.mouseClicked(
+                    mouseX, mouseY, button, frameLeft, frameTop, scale);
+            if (result.kind() == QuestFlowchartDialog.ClickKind.CLOSE) {
+                flowchartDialog = null;
+            } else if (result.kind() == QuestFlowchartDialog.ClickKind.OPEN_QUEST) {
+                QuestLogSnapshot.Entry entry = findQuestEntry(result.questId());
+                flowchartDialog = null;
+                if (entry != null) openQuest(entry);
+            }
+            return true;
+        }
         if (descriptionDialog != null) {
             float scale = getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale();
             DescriptionDialog.ClickResult result = descriptionDialog.mouseClicked(
@@ -225,6 +249,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (flowchartDialog != null) {
+            flowchartDialog.mouseReleased();
+            return true;
+        }
         if (descriptionDialog != null) return true;
         if (button == 0 && pressedFrameBack) {
             pressedFrameBack = false;
@@ -246,7 +274,21 @@ public final class PortholeQuestScreen extends ApricityScreen {
     }
 
     @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (flowchartDialog != null) {
+            float scale = getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale();
+            flowchartDialog.mouseDragged(mouseX, mouseY, button, scale);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
     public void mouseMoved(double mouseX, double mouseY) {
+        if (flowchartDialog != null) {
+            previousMouse = new Position(mouseX, mouseY);
+            return;
+        }
         if (descriptionDialog != null) {
             Style style = descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop,
                     getLinkedDocument() == null ? 1 : getLinkedDocument().getViewport().renderScale());
@@ -332,9 +374,14 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 descriptionDialog.draw(graphics, font, frameLeft, frameTop, tabScale, width, height);
                 graphics.flush();
             }
+            if (flowchartDialog != null) {
+                graphics.flush();
+                flowchartDialog.draw(graphics, font, frameLeft, frameTop, tabScale, width, height, mouseX, mouseY);
+                graphics.flush();
+            }
             var hovered = tabAt(mouseX, mouseY);
             graphics.pose().pushPose();
-            graphics.pose().translate(0, 0, descriptionDialog == null ? 500 : 700);
+            graphics.pose().translate(0, 0, descriptionDialog == null && flowchartDialog == null ? 500 : 700);
             try {
                 if (descriptionDialog != null) {
                     Style style = descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop, tabScale);
@@ -344,6 +391,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
                                 mouseX, mouseY, frameLeft, frameTop, tabScale);
                         if (controlTooltip != null) graphics.renderTooltip(font, controlTooltip, mouseX, mouseY);
                     }
+                } else if (flowchartDialog != null) {
+                    List<Component> tooltip = flowchartDialog.tooltipAt(
+                            mouseX, mouseY, frameLeft, frameTop, tabScale);
+                    if (!tooltip.isEmpty()) graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
                 } else if (hovered != null) graphics.renderTooltip(font, Component.literal(hovered.title()), mouseX, mouseY);
                 else {
                     drawQuestTooltip(graphics, mouseX, mouseY);
@@ -369,6 +420,17 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (flowchartDialog != null) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) flowchartDialog = null;
+            else switch (keyCode) {
+                case GLFW.GLFW_KEY_LEFT -> flowchartDialog.move(-1, 0);
+                case GLFW.GLFW_KEY_RIGHT -> flowchartDialog.move(1, 0);
+                case GLFW.GLFW_KEY_UP -> flowchartDialog.move(0, -1);
+                case GLFW.GLFW_KEY_DOWN -> flowchartDialog.move(0, 1);
+                default -> { }
+            }
+            return true;
+        }
         if (descriptionDialog != null) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 descriptionDialog = null;
@@ -384,6 +446,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 descriptionDialog.setHoveredStyle(null);
                 return true;
             }
+            return true;
+        }
+        if (Config.FLOWCHART_ENABLED.get() && detail.kind() == ScreenViewState.Kind.QUEST
+                && PortholeKeyMappings.FLOWCHART.matches(keyCode, scanCode)) {
+            openFlowchart();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -407,6 +474,9 @@ public final class PortholeQuestScreen extends ApricityScreen {
     public void tick() {
         super.tick();
         detailHistory.setLimit(Config.MAX_DETAIL_HISTORY.get());
+        boolean flowchartEnabled = Config.FLOWCHART_ENABLED.get();
+        if (!flowchartEnabled) flowchartDialog = null;
+        if (flowchartEnabled != boundFlowchartEnabled) detailDirty = true;
         captureListScroll();
         captureDetailScroll();
         refreshTabs();
@@ -430,6 +500,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         captureListScroll();
         captureDetailScroll();
         snapshot = updated;
+        flowchartDialog = null;
         if (!detail.equals(detail.retainValid(updated))) descriptionExpanded = false;
         if (descriptionDialog != null) {
             QuestLogSnapshot.QuestDetail current = updated.questDetails().get(descriptionDialog.questId());
@@ -480,7 +551,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 () -> getLinkedDocument() == document && document.isCurrentGeneration(generation) && bindingVersion == version,
                 this::changeFilter, this::clickChapter, this::openQuest, detail);
         if (rebindDetail) {
-            detailHeader = DetailHeaderView.bind(document, snapshot, detail, detailOpenedAt);
+            boundFlowchartEnabled = Config.FLOWCHART_ENABLED.get();
+            detailHeader = DetailHeaderView.bind(document, snapshot, detail, detailOpenedAt,
+                    () -> getLinkedDocument() == document && document.isCurrentGeneration(generation)
+                            && detail.kind() != ScreenViewState.Kind.BLANK,
+                    this::openFlowchart);
             questDetail = null;
         }
         if (detail.kind() == ScreenViewState.Kind.QUEST && rebindDetail) {
@@ -609,6 +684,24 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private void openQuest(QuestLogSnapshot.Entry entry) {
         chapterClicks.reset();
         selectDetail(ScreenViewState.quest(entry));
+    }
+
+    private void openFlowchart() {
+        if (!Config.FLOWCHART_ENABLED.get()) return;
+        QuestFlowchartLayout.Graph graph;
+        if (detail.kind() == ScreenViewState.Kind.CHAPTER) {
+            graph = QuestFlowchartLayout.forChapter(snapshot, detail.chapterId());
+        } else if (detail.kind() == ScreenViewState.Kind.QUEST) {
+            graph = QuestFlowchartLayout.forQuest(snapshot, detail.chapterId(), detail.questId());
+        } else return;
+        var chapterQuestIds = new HashSet<Long>();
+        for (var group : snapshot.groups()) for (var chapter : group.chapters()) {
+            if (chapter.id() == detail.chapterId()) {
+                chapter.entries().forEach(entry -> chapterQuestIds.add(entry.questId()));
+            }
+        }
+        flowchartDialog = new QuestFlowchartDialog(graph, chapterQuestIds);
+        QuestFlowchartDebug.capture(snapshot, detail.chapterId(), graph);
     }
 
     private void openDescription(long questId) {
@@ -824,6 +917,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         detailHistory.clear();
         pendingDescriptionReturn = null;
         descriptionDialog = null;
+        flowchartDialog = null;
         chapterClicks.reset();
         super.removed();
     }

@@ -238,6 +238,41 @@ def checkQuestDescriptionSnapshot = tasks.register('checkQuestDescriptionSnapsho
 }
 tasks.named('check') { dependsOn checkQuestDescriptionSnapshot }
 
+def checkQuestFlowchartLayout = tasks.register('checkQuestFlowchartLayout', JavaExec) {
+    dependsOn compileChecks
+    classpath = files(checkClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.model.QuestFlowchartLayoutCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkQuestFlowchartLayout }
+
+// Optional local development tool; uses the production layout and routing without Minecraft.
+def simulatorClasses = layout.buildDirectory.dir('simulator/classes')
+def compileQuestFlowchartSimulator = tasks.register('compileQuestFlowchartSimulator', JavaCompile) {
+    dependsOn tasks.named('classes')
+    source = fileTree('src/simulator/java') { include '**/*.java' }
+    classpath = sourceSets.main.output
+    destinationDirectory = simulatorClasses
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.register('simulateQuestFlowchartLayout', JavaExec) {
+    group = 'development'
+    description = 'Start the interactive quest flowchart simulator on localhost (no Minecraft).'
+    dependsOn compileQuestFlowchartSimulator
+    classpath = files(simulatorClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.simulator.QuestFlowchartSimulator'
+    args file('src/simulator/web/index.html').absolutePath,
+            providers.gradleProperty('flowchartPort').getOrElse('18333')
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.register('checkQuestFlowchartSimulator', JavaExec) {
+    group = 'verification'
+    dependsOn compileQuestFlowchartSimulator
+    classpath = files(simulatorClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.simulator.QuestFlowchartSimulatorCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
 idea {
     module {

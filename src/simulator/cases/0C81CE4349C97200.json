@@ -1,0 +1,562 @@
+{
+  "format": "portholequest-flowchart-v1",
+  "title": "章节 · 0C81CE4349C97200",
+  "source": "# Source chapter: 0C81CE4349C97200.snbt\n# Local order: ChapterEntryOrder dependency level, then saved file order.\n# Definition replay: all chapter quests plus direct external neighbors.\nA # 5CA72300C8B06BF6 handcrafted:stackable_book\nB # 35B44CC07B896408 oritech:still_oil_bucket\nC # 21A8C9D9F2AF0823 oritech:solid_biofuel\nD # 647025C0CD3FA932 oritech:machine_frame_block\nE # 73E30062AA3EEDC7 oritech:wrench\nF # 62B738FC9284F445 stellaris:tablet\nG # 05F7E14228A6387D oritech:machine_core_7\nH # 0FE30EB64D32CAB5 oritech:nickel_ingot\nI # 1E8BBEAC55BD8070 oritech:pump_block\nJ # 5C3BC9D7AA570E48 oritech:polymer_resin\nK # 55CC147C208782C1 oritech:raw_biopolymer\nL # 115B434883352725 stellaris:oil_bucket\nM # 4B6AF94195E14B9E stellaris:water_separator\nN # 4E9E7A5FE358350F oritech:basic_generator_block\nO # 286742A6C38D5726 oritech:fuel_generator_block\nP # 2DAE740DD3DBB073 oritech:plastic_sheet\nQ # 00CE77CBF41E5CD6 oritech:bio_generator_block\nR # 4D1C6F77A8372705 stellaris:oil_finder\nS # 7FD313E1E4FEC53D stellaris:fuel_refinery\nT # 1EBADBACFB13A6B7 stellaris:water_pump\nU # 70588508220CEA9D oritech:energy_pipe\nV # 75D1BD1E585CDEBF oritech:machine_core_1\nW # 0511337C32B6710C stellaris:pumpjack\nX # 11DF3DCAC2A60145 stellaris:fuel_bucket\nY # 0F68EB350BA097D5 stellaris:oxygen_distributor\nZ # 7FA4FC8107F4D408 stellaris:oxygen_tank\nAA # 7D67FDFF6E66E86F oritech:superconductor\nAB # 707BFFDE507DB32E oritech:item_pipe\nAC # 5C1B3384E5776DCB oritech:fluid_pipe\nAD # 46469E4DE5D13F80 oritech:pulverizer_block\nAE # 3F10602EEFFFF8E8 oritech:assembler_block\nAF # 5CC8E217EE08F484 oritech:foundry_block\nAG # 552274CA94BF83C6 oritech:centrifuge_block\nAH # 37F2922ED19E8245 oritech:machine_fluid_addon\nAI # 4B12767444CBD9B9 stellaris:space_suit_leggings\nAJ # 31A3918333E56D38 oritech:lava_generator_block\nAK # 52E870272B9B93BA oritech:laser_arm_block\nAL # 7294704C5FE5B4B2 stellaris:rocket_station\nAM # 11767AFA3B81217A oritech:fluxite\nAN # 08E535F3C1ECA6E2 oritech:target_designator\nAO # 6D40FE03A194EFA4 oritech:small_storage_block\nAP # 10BEC1E5D6127C77 stellaris:rocket\nAQ # 3CDFC242D92B9F66 stellaris:rocket_launch_pad\nAR # 3283F8E80FD4268C oritech:fragment_forge_block\nAS # 3068584CF140B960 oritech:exo_helmet\nAT # 5CB2B88033A4E3CF oritech:hand_drill\nAU # 072E70774BF18448 oritech:small_tank_block\nAV # 6DBE35D748C1243B oritech:refinery_block\nAW # 0A5C312D31A0CE7A oritech:fertilizer_block\nAX # 56C5EDC443C07D5A oritech:cooler_block\nAY # 195FEB839ACD59B7 oritech:placer_block\nAZ # 4ED70B5CA47DE6FA oritech:destroyer_block\nBA # 3BEB8BCDAC26BDD1 oritech:treefeller_block\nBB # 2C99480CBE75D923 stellaris:moon_globe\nBC # 275091064E5A9C54 oritech:powered_furnace_block\nBD # 6B9B1F035EBCE5EB oritech:chainsaw\nA -> H\nB -> I\nB -> J\nC -> K\nB -> L\nF -> L\nF -> M\nH -> N\nI -> O\nK -> P\nJ -> P\nK -> Q\nL -> R\nL -> S\nM -> T\nN -> U\nN -> V\nR -> W\nS -> X\nT -> Y\nT -> Z\nU -> AA\nU -> AB\nU -> AC\nV -> AD\nV -> AE\nV -> AF\nV -> AG\nV -> AH\nZ -> AI\nAD -> AJ\nAG -> AK\nAF -> AK\nAE -> AK\nAD -> AK\nX -> AL\nAI -> AL\nAK -> AM\nAK -> AN\nAJ -> AO\nAL -> AP\nAL -> AQ\nAM -> AR\nAO -> AS\nAO -> AT\nAO -> AU\nAM -> AV\nAM -> AW\nAM -> AX\nAM -> AY\nAM -> AZ\nAM -> BA\nAP -> BB\nAM -> BC\nAT -> BD\n",
+  "chapterId": "0C81CE4349C97200",
+  "sourceFile": "run/config/ftbquests/quests/chapters/0C81CE4349C97200.snbt",
+  "sourceSha256": "fa04213074a7f83dd253ea22817a4ffabe1f3919d097e402a2dcc84afe092b14",
+  "nodes": [
+    {
+      "alias": "A",
+      "questId": "5CA72300C8B06BF6",
+      "label": "handcrafted:stackable_book",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "B",
+      "questId": "35B44CC07B896408",
+      "label": "oritech:still_oil_bucket",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "C",
+      "questId": "21A8C9D9F2AF0823",
+      "label": "oritech:solid_biofuel",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "D",
+      "questId": "647025C0CD3FA932",
+      "label": "oritech:machine_frame_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "E",
+      "questId": "73E30062AA3EEDC7",
+      "label": "oritech:wrench",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "F",
+      "questId": "62B738FC9284F445",
+      "label": "stellaris:tablet",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "G",
+      "questId": "05F7E14228A6387D",
+      "label": "oritech:machine_core_7",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": []
+    },
+    {
+      "alias": "H",
+      "questId": "0FE30EB64D32CAB5",
+      "label": "oritech:nickel_ingot",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "5CA72300C8B06BF6"
+      ]
+    },
+    {
+      "alias": "I",
+      "questId": "1E8BBEAC55BD8070",
+      "label": "oritech:pump_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "35B44CC07B896408"
+      ]
+    },
+    {
+      "alias": "J",
+      "questId": "5C3BC9D7AA570E48",
+      "label": "oritech:polymer_resin",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "35B44CC07B896408"
+      ]
+    },
+    {
+      "alias": "K",
+      "questId": "55CC147C208782C1",
+      "label": "oritech:raw_biopolymer",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "21A8C9D9F2AF0823"
+      ]
+    },
+    {
+      "alias": "L",
+      "questId": "115B434883352725",
+      "label": "stellaris:oil_bucket",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "35B44CC07B896408",
+        "62B738FC9284F445"
+      ]
+    },
+    {
+      "alias": "M",
+      "questId": "4B6AF94195E14B9E",
+      "label": "stellaris:water_separator",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "62B738FC9284F445"
+      ]
+    },
+    {
+      "alias": "N",
+      "questId": "4E9E7A5FE358350F",
+      "label": "oritech:basic_generator_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "0FE30EB64D32CAB5"
+      ]
+    },
+    {
+      "alias": "O",
+      "questId": "286742A6C38D5726",
+      "label": "oritech:fuel_generator_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "1E8BBEAC55BD8070"
+      ]
+    },
+    {
+      "alias": "P",
+      "questId": "2DAE740DD3DBB073",
+      "label": "oritech:plastic_sheet",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "55CC147C208782C1",
+        "5C3BC9D7AA570E48"
+      ]
+    },
+    {
+      "alias": "Q",
+      "questId": "00CE77CBF41E5CD6",
+      "label": "oritech:bio_generator_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "55CC147C208782C1"
+      ]
+    },
+    {
+      "alias": "R",
+      "questId": "4D1C6F77A8372705",
+      "label": "stellaris:oil_finder",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "115B434883352725"
+      ]
+    },
+    {
+      "alias": "S",
+      "questId": "7FD313E1E4FEC53D",
+      "label": "stellaris:fuel_refinery",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "115B434883352725"
+      ]
+    },
+    {
+      "alias": "T",
+      "questId": "1EBADBACFB13A6B7",
+      "label": "stellaris:water_pump",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "4B6AF94195E14B9E"
+      ]
+    },
+    {
+      "alias": "U",
+      "questId": "70588508220CEA9D",
+      "label": "oritech:energy_pipe",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "4E9E7A5FE358350F"
+      ]
+    },
+    {
+      "alias": "V",
+      "questId": "75D1BD1E585CDEBF",
+      "label": "oritech:machine_core_1",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "4E9E7A5FE358350F"
+      ]
+    },
+    {
+      "alias": "W",
+      "questId": "0511337C32B6710C",
+      "label": "stellaris:pumpjack",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "4D1C6F77A8372705"
+      ]
+    },
+    {
+      "alias": "X",
+      "questId": "11DF3DCAC2A60145",
+      "label": "stellaris:fuel_bucket",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "7FD313E1E4FEC53D"
+      ]
+    },
+    {
+      "alias": "Y",
+      "questId": "0F68EB350BA097D5",
+      "label": "stellaris:oxygen_distributor",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "1EBADBACFB13A6B7"
+      ]
+    },
+    {
+      "alias": "Z",
+      "questId": "7FA4FC8107F4D408",
+      "label": "stellaris:oxygen_tank",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "1EBADBACFB13A6B7"
+      ]
+    },
+    {
+      "alias": "AA",
+      "questId": "7D67FDFF6E66E86F",
+      "label": "oritech:superconductor",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "70588508220CEA9D"
+      ]
+    },
+    {
+      "alias": "AB",
+      "questId": "707BFFDE507DB32E",
+      "label": "oritech:item_pipe",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "70588508220CEA9D"
+      ]
+    },
+    {
+      "alias": "AC",
+      "questId": "5C1B3384E5776DCB",
+      "label": "oritech:fluid_pipe",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "70588508220CEA9D"
+      ]
+    },
+    {
+      "alias": "AD",
+      "questId": "46469E4DE5D13F80",
+      "label": "oritech:pulverizer_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "75D1BD1E585CDEBF"
+      ]
+    },
+    {
+      "alias": "AE",
+      "questId": "3F10602EEFFFF8E8",
+      "label": "oritech:assembler_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "75D1BD1E585CDEBF"
+      ]
+    },
+    {
+      "alias": "AF",
+      "questId": "5CC8E217EE08F484",
+      "label": "oritech:foundry_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "75D1BD1E585CDEBF"
+      ]
+    },
+    {
+      "alias": "AG",
+      "questId": "552274CA94BF83C6",
+      "label": "oritech:centrifuge_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "75D1BD1E585CDEBF"
+      ]
+    },
+    {
+      "alias": "AH",
+      "questId": "37F2922ED19E8245",
+      "label": "oritech:machine_fluid_addon",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "75D1BD1E585CDEBF"
+      ]
+    },
+    {
+      "alias": "AI",
+      "questId": "4B12767444CBD9B9",
+      "label": "stellaris:space_suit_leggings",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "7FA4FC8107F4D408"
+      ]
+    },
+    {
+      "alias": "AJ",
+      "questId": "31A3918333E56D38",
+      "label": "oritech:lava_generator_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "46469E4DE5D13F80"
+      ]
+    },
+    {
+      "alias": "AK",
+      "questId": "52E870272B9B93BA",
+      "label": "oritech:laser_arm_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "552274CA94BF83C6",
+        "5CC8E217EE08F484",
+        "3F10602EEFFFF8E8",
+        "46469E4DE5D13F80"
+      ]
+    },
+    {
+      "alias": "AL",
+      "questId": "7294704C5FE5B4B2",
+      "label": "stellaris:rocket_station",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11DF3DCAC2A60145",
+        "4B12767444CBD9B9"
+      ]
+    },
+    {
+      "alias": "AM",
+      "questId": "11767AFA3B81217A",
+      "label": "oritech:fluxite",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "52E870272B9B93BA"
+      ]
+    },
+    {
+      "alias": "AN",
+      "questId": "08E535F3C1ECA6E2",
+      "label": "oritech:target_designator",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "52E870272B9B93BA"
+      ]
+    },
+    {
+      "alias": "AO",
+      "questId": "6D40FE03A194EFA4",
+      "label": "oritech:small_storage_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "31A3918333E56D38"
+      ]
+    },
+    {
+      "alias": "AP",
+      "questId": "10BEC1E5D6127C77",
+      "label": "stellaris:rocket",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "7294704C5FE5B4B2"
+      ]
+    },
+    {
+      "alias": "AQ",
+      "questId": "3CDFC242D92B9F66",
+      "label": "stellaris:rocket_launch_pad",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "7294704C5FE5B4B2"
+      ]
+    },
+    {
+      "alias": "AR",
+      "questId": "3283F8E80FD4268C",
+      "label": "oritech:fragment_forge_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "AS",
+      "questId": "3068584CF140B960",
+      "label": "oritech:exo_helmet",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "6D40FE03A194EFA4"
+      ]
+    },
+    {
+      "alias": "AT",
+      "questId": "5CB2B88033A4E3CF",
+      "label": "oritech:hand_drill",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "6D40FE03A194EFA4"
+      ]
+    },
+    {
+      "alias": "AU",
+      "questId": "072E70774BF18448",
+      "label": "oritech:small_tank_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "6D40FE03A194EFA4"
+      ]
+    },
+    {
+      "alias": "AV",
+      "questId": "6DBE35D748C1243B",
+      "label": "oritech:refinery_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "AW",
+      "questId": "0A5C312D31A0CE7A",
+      "label": "oritech:fertilizer_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "AX",
+      "questId": "56C5EDC443C07D5A",
+      "label": "oritech:cooler_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "AY",
+      "questId": "195FEB839ACD59B7",
+      "label": "oritech:placer_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "AZ",
+      "questId": "4ED70B5CA47DE6FA",
+      "label": "oritech:destroyer_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "BA",
+      "questId": "3BEB8BCDAC26BDD1",
+      "label": "oritech:treefeller_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "BB",
+      "questId": "2C99480CBE75D923",
+      "label": "stellaris:moon_globe",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "10BEC1E5D6127C77"
+      ]
+    },
+    {
+      "alias": "BC",
+      "questId": "275091064E5A9C54",
+      "label": "oritech:powered_furnace_block",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "11767AFA3B81217A"
+      ]
+    },
+    {
+      "alias": "BD",
+      "questId": "6B9B1F035EBCE5EB",
+      "label": "oritech:chainsaw",
+      "chapterId": "0C81CE4349C97200",
+      "external": false,
+      "dependencies": [
+        "5CB2B88033A4E3CF"
+      ]
+    }
+  ]
+}
