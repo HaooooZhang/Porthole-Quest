@@ -42,7 +42,8 @@ public final class QuestLogController {
             return;
         }
         // Full action/sync coordination belongs to R4; R1 merely retires stale read-only views.
-        if (++refreshTicks < 20) return;
+        refreshTicks = Math.min(20, refreshTicks + 1);
+        if (refreshTicks < 20 || !screen.beginSnapshotRefresh()) return;
         refreshTicks = 0;
         PortholeQuestScreen activeScreen = screen;
         try {
@@ -62,6 +63,8 @@ public final class QuestLogController {
             }
         } catch (RuntimeException exception) {
             fail(activeScreen, exception);
+        } finally {
+            screen.finishSnapshotRefresh();
         }
     }
 

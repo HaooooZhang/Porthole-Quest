@@ -1,12 +1,11 @@
 package ink.myumoon.portholequest.client.ui;
 
-import com.google.gson.JsonParser;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import dev.ftb.mods.ftblibrary.icon.Icon;
 import ink.myumoon.portholequest.client.screen.ScreenViewState;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import ink.myumoon.portholequest.Config;
+import ink.myumoon.portholequest.client.input.PortholeKeyMappings;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
@@ -19,7 +18,7 @@ import java.util.function.BooleanSupplier;
 public final class DetailHeaderView {
     private static final int BOOK_TITLE_SCALE = 2;
     private final String title;
-    private final Icon icon;
+    private final PreparedIcon icon;
     private final Element iconAnchor;
     private final Element titleAnchor;
     private final long openedAt;
@@ -35,7 +34,7 @@ public final class DetailHeaderView {
                              Config.BlankDetailMode blankMode, ResourceLocation blankTexture,
                              int blankWidth, int blankHeight, int textureWidth, int textureHeight) {
         this.title = title;
-        this.icon = iconJson == null ? null : Icon.getIcon(JsonParser.parseString(iconJson));
+        this.icon = iconJson == null ? null : PreparedIcon.parse(iconJson);
         this.iconAnchor = iconAnchor;
         this.titleAnchor = titleAnchor;
         this.openedAt = openedAt;
@@ -133,7 +132,7 @@ public final class DetailHeaderView {
         Element flowchart = appendClass(document, footer, "detail-action-button detail-action-flowchart", "");
         flowchart.setAttribute("aria-disabled", "false");
         flowchart.setAttribute("data-action", "flowchart");
-        appendClass(document, flowchart, "detail-action-label", Component.translatable("ui.portholequest.action.flowchart").getString());
+        appendClass(document, flowchart, "detail-action-label", PortholeKeyMappings.flowchartLabel(true).getString());
         flowchart.addEventListener("click", event -> {
             if (currentBinding.getAsBoolean()
                     && event instanceof com.sighs.apricityui.event.MouseEvent mouse && mouse.button == 0) {

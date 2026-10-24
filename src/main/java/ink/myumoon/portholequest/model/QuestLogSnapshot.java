@@ -199,6 +199,21 @@ public record QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGa
         return nonBinary && started && !completed && percent > 0 && percent < 100;
     }
 
+    public enum QuestState {
+        LOCKED,
+        AVAILABLE,
+        STARTED,
+        COMPLETED,
+        REWARD;
+
+        public static QuestState from(boolean started, boolean completed,
+                                      boolean canStart, boolean unclaimedRewards) {
+            if (completed) return unclaimedRewards ? REWARD : COMPLETED;
+            if (started) return STARTED;
+            return canStart ? AVAILABLE : LOCKED;
+        }
+    }
+
     public int chapterCount() {
         return groups.stream().mapToInt(group -> group.chapters().size()).sum();
     }
@@ -225,21 +240,49 @@ public record QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGa
 
     public record Entry(long entryId, long questId, long chapterId, String title, boolean link,
                         boolean started, boolean completed, boolean canStart,
-                        int progressPercent, boolean unclaimedRewards, boolean pinned) {
+                        int progressPercent, boolean unclaimedRewards, boolean pinned, QuestState state) {
+        public Entry(long entryId, long questId, long chapterId, String title, boolean link,
+                     boolean started, boolean completed, boolean canStart,
+                     int progressPercent, boolean unclaimedRewards, boolean pinned) {
+            this(entryId, questId, chapterId, title, link, started, completed, canStart,
+                    progressPercent, unclaimedRewards, pinned,
+                    QuestState.from(started, completed, canStart, unclaimedRewards));
+        }
+
         public Entry {
             Objects.requireNonNull(title);
+            requireMatchingState(state, started, completed, canStart, unclaimedRewards);
         }
     }
 
     public record GraphQuest(long questId, long chapterId, long groupId, String title, String iconJson,
                              boolean detailsAvailable, boolean started, boolean completed, boolean canStart,
                              int progressPercent, boolean unclaimedRewards, boolean pinned,
-                             int stableOrder, List<Long> dependencyQuestIds, List<Long> dependantQuestIds) {
+                             int stableOrder, List<Long> dependencyQuestIds, List<Long> dependantQuestIds,
+                             QuestState state) {
+        public GraphQuest(long questId, long chapterId, long groupId, String title, String iconJson,
+                          boolean detailsAvailable, boolean started, boolean completed, boolean canStart,
+                          int progressPercent, boolean unclaimedRewards, boolean pinned,
+                          int stableOrder, List<Long> dependencyQuestIds, List<Long> dependantQuestIds) {
+            this(questId, chapterId, groupId, title, iconJson, detailsAvailable, started, completed, canStart,
+                    progressPercent, unclaimedRewards, pinned, stableOrder, dependencyQuestIds, dependantQuestIds,
+                    QuestState.from(started, completed, canStart, unclaimedRewards));
+        }
+
         public GraphQuest {
             Objects.requireNonNull(title);
             Objects.requireNonNull(iconJson);
             dependencyQuestIds = List.copyOf(dependencyQuestIds);
             dependantQuestIds = List.copyOf(dependantQuestIds);
+            requireMatchingState(state, started, completed, canStart, unclaimedRewards);
+        }
+    }
+
+    private static void requireMatchingState(QuestState state, boolean started, boolean completed,
+                                            boolean canStart, boolean unclaimedRewards) {
+        Objects.requireNonNull(state);
+        if (state != QuestState.from(started, completed, canStart, unclaimedRewards)) {
+            throw new IllegalArgumentException("Quest state does not match its FTBQ facts");
         }
     }
 }

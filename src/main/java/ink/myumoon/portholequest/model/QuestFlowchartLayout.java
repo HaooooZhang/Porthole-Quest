@@ -15,7 +15,7 @@ import java.util.Set;
 /** Finite, stable left-to-right layout for the read-only quest dependency preview. */
 public final class QuestFlowchartLayout {
     public static final String REVISION = "r33-lane-packing-3";
-    public static final int VIEWPORT_WIDTH = 300;
+    public static final int VIEWPORT_WIDTH = 292;
     public static final int VIEWPORT_HEIGHT = 174;
     public static final int NODE_WIDTH = 32;
     public static final int NODE_HEIGHT = 32;
@@ -34,6 +34,52 @@ public final class QuestFlowchartLayout {
     }
 
     private static Graph create(QuestLogSnapshot snapshot, long chapterId, Long focusQuestId) {
+        return create(select(snapshot, chapterId), focusQuestId);
+    }
+
+    /** Replace detached node state; keep positions and route point lists when topology is unchanged. */
+    public static Graph refresh(Graph current, QuestLogSnapshot snapshot, long chapterId, Long focusQuestId) {
+        Selection next = select(snapshot, chapterId);
+        boolean sameTopology = current.nodes().size() == next.orderedIds().size()
+                && current.edges().size() == next.edges().size();
+        for (Node node : current.nodes()) {
+            if (!next.selectedIds().contains(node.quest().questId())) sameTopology = false;
+        }
+        for (PositionedEdge edge : current.edges()) {
+            if (!next.edges().contains(new Edge(edge.from().quest().questId(), edge.to().quest().questId()))) {
+                sameTopology = false;
+            }
+        }
+        if (!sameTopology) return create(next, focusQuestId);
+
+        var nodes = new ArrayList<Node>(current.nodes().size());
+        var nodeById = new HashMap<Long, Node>();
+        boolean changed = false;
+        for (Node node : current.nodes()) {
+            QuestLogSnapshot.GraphQuest quest = next.available().get(node.quest().questId());
+            Node updated = node.quest().equals(quest) ? node
+                    : new Node(quest, node.x(), node.y(), node.layer(), node.row());
+            nodes.add(updated);
+            nodeById.put(quest.questId(), updated);
+            changed |= updated != node;
+        }
+        if (!changed) return current;
+        var edges = new ArrayList<PositionedEdge>(current.edges().size());
+        var routes = new HashMap<PositionedEdge, List<QuestFlowchartRouting.Point>>();
+        for (PositionedEdge edge : current.edges()) {
+            var updated = new PositionedEdge(nodeById.get(edge.from().quest().questId()),
+                    nodeById.get(edge.to().quest().questId()));
+            edges.add(updated);
+            routes.put(updated, current.route(edge));
+        }
+        return new Graph(nodes, edges, current.width(), current.height(), current.anchorQuestId(),
+                current.verticalAnchorQuestId(), routes);
+    }
+
+    private record Selection(Map<Long, QuestLogSnapshot.GraphQuest> available, Set<Long> selectedIds,
+                             List<Long> orderedIds, LinkedHashSet<Edge> edges) {}
+
+    private static Selection select(QuestLogSnapshot snapshot, long chapterId) {
         Objects.requireNonNull(snapshot);
         Map<Long, QuestLogSnapshot.GraphQuest> available = new LinkedHashMap<>();
         snapshot.graphQuests().stream()
@@ -73,6 +119,13 @@ public final class QuestFlowchartLayout {
             }
         }
 
+        return new Selection(available, selected, orderedIds, edges);
+    }
+
+    private static Graph create(Selection selection, Long focusQuestId) {
+        var available = selection.available();
+        var orderedIds = selection.orderedIds();
+        var edges = selection.edges();
         var outgoing = new HashMap<Long, List<Long>>();
         var indegree = new HashMap<Long, Integer>();
         var layer = new HashMap<Long, Integer>();
@@ -570,14 +623,24 @@ public final class QuestFlowchartLayout {
         public double initialScrollX() {
             Node anchor = anchorQuestId == null ? null : node(anchorQuestId);
             if (anchor == null) return 0;
-            return clamp(anchor.x() + NODE_WIDTH / 2d - VIEWPORT_WIDTH / 2d, 0, width - VIEWPORT_WIDTH);
+            return clamp(anchor.x() + NODE_WIDTH / 2d - VIEWPORT_WIDTH / 2d, 0, contentWidth() - VIEWPORT_WIDTH);
         }
 
         public double initialScrollY() {
-            if (verticalAnchorQuestId == null) return clamp(height / 2d - VIEWPORT_HEIGHT / 2d, 0, height - VIEWPORT_HEIGHT);
+            if (verticalAnchorQuestId == null) return clamp(height / 2d - VIEWPORT_HEIGHT / 2d, 0, contentHeight() - VIEWPORT_HEIGHT);
             Node anchor = node(verticalAnchorQuestId);
             if (anchor == null) return 0;
-            return clamp(anchor.y() + NODE_HEIGHT / 2d - VIEWPORT_HEIGHT / 2d, 0, height - VIEWPORT_HEIGHT);
+            return clamp(anchor.y() + NODE_HEIGHT / 2d - VIEWPORT_HEIGHT / 2d, 0, contentHeight() - VIEWPORT_HEIGHT);
+        }
+
+        public int contentWidth() {
+            return Math.max(VIEWPORT_WIDTH, nodes.stream().mapToInt(Node::right).max().orElse(0) + MARGIN);
+        }
+
+        /** Keep only the trailing space needed to center the trunk, rather than the entire symmetric canvas. */
+        public int contentHeight() {
+            int bottom = nodes.stream().mapToInt(Node::bottom).max().orElse(0) + MARGIN;
+            return Math.max(VIEWPORT_HEIGHT, Math.max(bottom, height / 2 + VIEWPORT_HEIGHT / 2));
         }
 
         private static double clamp(double value, double min, double max) {

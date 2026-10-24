@@ -2,6 +2,7 @@ package ink.myumoon.portholequest.client.input;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import org.lwjgl.glfw.GLFW;
@@ -16,6 +17,12 @@ public final class PortholeKeyMappings {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SPACE, CATEGORY);
 
     private PortholeKeyMappings() {}
+
+    public static Component flowchartLabel(boolean showBinding) {
+        Component label = Component.translatable("ui.portholequest.action.flowchart");
+        return !showBinding || FLOWCHART.isUnbound() ? label
+                : Component.translatable("ui.portholequest.action.key_hint", label, FLOWCHART.getTranslatedKeyMessage());
+    }
 
     public static void register(RegisterKeyMappingsEvent event) {
         event.register(OPEN);

@@ -230,6 +230,14 @@ def checkScreenStateHistory = tasks.register('checkScreenStateHistory', JavaExec
 }
 tasks.named('check') { dependsOn checkScreenStateHistory }
 
+def checkScreenRefreshGuard = tasks.register('checkScreenRefreshGuard', JavaExec) {
+    dependsOn compileChecks
+    classpath = files(checkClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.client.screen.ScreenRefreshGuardCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkScreenRefreshGuard }
+
 def checkQuestDescriptionSnapshot = tasks.register('checkQuestDescriptionSnapshot', JavaExec) {
     dependsOn compileChecks
     classpath = files(checkClasses, sourceSets.main.output)

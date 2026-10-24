@@ -65,8 +65,12 @@ public final class QuestLogView {
                     Element row = append(document, list, "quest-row", "", entry.entryId());
                     row.setAttribute("data-quest-id", Long.toUnsignedString(entry.questId(), 16));
                     row.setAttribute("data-chapter-id", Long.toUnsignedString(entry.chapterId(), 16));
-                    String state = entry.completed() ? (entry.unclaimedRewards() ? "reward" : "complete")
-                            : (entry.canStart() ? "available" : "locked");
+                    String state = switch (entry.state()) {
+                        case REWARD -> "reward";
+                        case COMPLETED -> "complete";
+                        case STARTED, AVAILABLE -> "available";
+                        case LOCKED -> "locked";
+                    };
                     row.setAttribute("data-state", state);
                     String marker = switch (state) {
                         case "reward" -> "!";

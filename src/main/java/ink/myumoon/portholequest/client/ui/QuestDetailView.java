@@ -3,7 +3,6 @@ package ink.myumoon.portholequest.client.ui;
 import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import dev.ftb.mods.ftblibrary.icon.Icon;
 import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.client.screen.ScreenViewState;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
@@ -243,7 +242,7 @@ public final class QuestDetailView {
     }
 
     public List<Component> tooltipAt(double x, double y) {
-        if (content == null || !contains(content.getBoundingClientRect(), x, y)) return List.of();
+        if (!insideContent(x, y)) return List.of();
         for (var target : tooltipTargets) {
             if (contains(target.element().getBoundingClientRect(), x, y)) return target.lines();
         }
@@ -251,6 +250,7 @@ public final class QuestDetailView {
     }
 
     public Style styleAt(double x, double y) {
+        if (!insideContent(x, y)) return null;
         for (var placement : descriptionText) {
             var rect = placement.anchor().getBoundingClientRect();
             if (!contains(rect, x, y)) continue;
@@ -267,10 +267,15 @@ public final class QuestDetailView {
     }
 
     public boolean isDescriptionAt(double x, double y) {
+        if (!insideContent(x, y)) return false;
         for (var placement : descriptionText) {
             if (contains(placement.anchor().getBoundingClientRect(), x, y)) return true;
         }
         return false;
+    }
+
+    private boolean insideContent(double x, double y) {
+        return content != null && contains(content.getBoundingClientRect(), x, y);
     }
 
     private static final class TextPlacement {
@@ -293,9 +298,9 @@ public final class QuestDetailView {
         private Component component() { return component; }
     }
 
-    private record IconPlacement(Icon icon, Element anchor) {
+    private record IconPlacement(PreparedIcon icon, Element anchor) {
         private IconPlacement(String json, Element anchor) {
-            this(Icon.getIcon(com.google.gson.JsonParser.parseString(json)), anchor);
+            this(PreparedIcon.parse(json), anchor);
         }
     }
 

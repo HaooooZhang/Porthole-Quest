@@ -45,8 +45,12 @@ public final class ChapterDetailView {
             return;
         }
         for (var entry : chapter.entries()) {
-            String stateName = entry.completed() ? (entry.unclaimedRewards() ? "reward" : "complete")
-                    : (entry.canStart() ? "available" : "locked");
+            String stateName = switch (entry.state()) {
+                case REWARD -> "reward";
+                case COMPLETED -> "complete";
+                case STARTED, AVAILABLE -> "available";
+                case LOCKED -> "locked";
+            };
             String marker = switch (stateName) {
                 case "reward" -> "!";
                 case "complete" -> "*";

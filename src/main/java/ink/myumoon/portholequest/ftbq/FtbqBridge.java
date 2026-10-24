@@ -118,7 +118,7 @@ public final class FtbqBridge {
                         // Do not copy hidden descriptions, Tasks or Rewards into the
                         // detached UI snapshot when FTBQ denies opening the details.
                         if (detailsAvailable) questDetails.put(quest.id,
-                                detail(quest, chapter, data, playerId));
+                                detail(quest, data, playerId));
                     }
                 }
             }
@@ -132,9 +132,8 @@ public final class FtbqBridge {
                 List.copyOf(graphQuests.values())));
     }
 
-    private static QuestLogSnapshot.QuestDetail detail(Quest quest, Chapter chapter,
-                                                       TeamData data, UUID playerId) {
-        boolean hideText = quest.getHideTextUntilComplete().get(chapter.isHideTextUntilComplete())
+    private static QuestLogSnapshot.QuestDetail detail(Quest quest, TeamData data, UUID playerId) {
+        boolean hideText = quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete())
                 && !data.isCompleted(quest);
         var rawDescription = quest.getRawDescription();
         boolean paginated = rawDescription.stream().anyMatch("{@pagebreak}"::equals);
@@ -288,16 +287,20 @@ public final class FtbqBridge {
         return new QuestLogSnapshot.GraphQuest(quest.id, chapterId, groupId, quest.getTitle().getString(),
                 quest.getIcon().getJson().toString(), detailsAvailable, entry.started(), entry.completed(),
                 entry.canStart(), entry.progressPercent(), entry.unclaimedRewards(), entry.pinned(), stableOrder,
-                dependencies, dependants);
+                dependencies, dependants, entry.state());
     }
 
     private static QuestLogSnapshot.Entry entry(long entryId, long chapterId, Quest quest,
                                                  boolean link, TeamData data, UUID playerId) {
+        boolean started = data.isStarted(quest);
+        boolean completed = data.isCompleted(quest);
+        boolean canStart = data.canStartTasks(quest);
+        boolean unclaimedRewards = data.hasUnclaimedRewards(playerId, quest);
+        var state = QuestLogSnapshot.QuestState.from(started, completed, canStart, unclaimedRewards);
         return new QuestLogSnapshot.Entry(entryId, quest.id, chapterId,
-                quest.getTitle().getString(), link,
-                data.isStarted(quest), data.isCompleted(quest), data.canStartTasks(quest),
-                data.getRelativeProgress(quest), data.hasUnclaimedRewards(playerId, quest),
-                ClientQuestFile.isQuestPinned(quest.id));
+                quest.getTitle().getString(), link, started, completed, canStart,
+                data.getRelativeProgress(quest), unclaimedRewards,
+                ClientQuestFile.isQuestPinned(quest.id), state);
     }
 
     public void reset() {

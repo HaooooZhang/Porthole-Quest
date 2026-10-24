@@ -1,7 +1,5 @@
 package ink.myumoon.portholequest.client.ui;
 
-import com.google.gson.JsonParser;
-import dev.ftb.mods.ftblibrary.icon.Icon;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -35,20 +33,22 @@ public final class DescriptionDialog {
     private double scroll;
     private double contentHeight;
     private List<PlacedText> placedText = List.of();
+    private List<PlacedImage> placedImages = List.of();
     private Style hoveredStyle;
 
     public DescriptionDialog(long questId, String questTitle, QuestLogSnapshot.Description description) {
-        this.questId = questId;
-        this.questTitle = questTitle;
-        this.description = description;
+        this(questId, questTitle, description, null);
     }
 
     public DescriptionDialog(long questId, String questTitle, QuestLogSnapshot.Description description, State state) {
-        this(questId, questTitle, description);
+        this.questId = questId;
+        this.questTitle = questTitle;
+        this.description = description;
         if (state != null && state.questId() == questId) {
             page = clamp(state.page(), 0, Math.max(0, description.pages().size() - 1));
             scroll = Math.max(0, state.scroll());
         }
+        preparePage(Minecraft.getInstance().font);
     }
 
     public long questId() {
@@ -67,16 +67,17 @@ public final class DescriptionDialog {
         return new State(questId, page, scroll);
     }
 
+    public void refreshResources(Font font) {
+        hoveredStyle = null;
+        preparePage(font);
+    }
+
     public void scroll(double amount) {
         scroll = clamp(scroll - amount * 18, 0, Math.max(0, contentHeight - TEXT_HEIGHT));
     }
 
     public void page(int delta) {
-        int next = clamp(page + delta, 0, Math.max(0, description.pages().size() - 1));
-        if (next != page) {
-            page = next;
-            scroll = 0;
-        }
+        pageTo(page + delta);
     }
 
     public void pageTo(int pageIndex) {
@@ -84,6 +85,8 @@ public final class DescriptionDialog {
         if (next != page) {
             page = next;
             scroll = 0;
+            hoveredStyle = null;
+            preparePage(Minecraft.getInstance().font);
         }
     }
 
@@ -154,17 +157,17 @@ public final class DescriptionDialog {
                 Math.round(14 * scale), Math.round(14 * scale), "x", true);
     }
 
-    private void renderPage(GuiGraphics graphics, Font font, float scale, int textOriginX, int textOriginY,
-                           double currentScroll) {
+    private void preparePage(Font font) {
         var parts = currentParts();
         var text = new ArrayList<PlacedText>();
+        var images = new ArrayList<PlacedImage>();
         var textRun = new ArrayList<QuestLogSnapshot.DescriptionPart>();
         double y = 0;
         for (var part : parts) {
             if (part.kind() == QuestLogSnapshot.DescriptionPart.Kind.TEXT) {
                 textRun.add(part);
             } else {
-                y = drawTextRun(graphics, font, text, textRun, y, currentScroll);
+                y = prepareTextRun(font, text, textRun, y);
                 int drawWidth = Math.max(1, part.imageWidth());
                 int drawHeight = Math.max(1, part.imageHeight());
                 int x = 0;
@@ -179,48 +182,54 @@ public final class DescriptionDialog {
                         default -> (TEXT_WIDTH - drawWidth) / 2;
                     };
                 }
-                int targetX = Math.round(textOriginX + x * scale);
-                int targetY = Math.round(textOriginY + (float) (y - currentScroll) * scale);
-                try {
-                    Icon icon = Icon.getIcon(JsonParser.parseString(part.imageIconJson()));
-                    graphics.pose().pushPose();
-                    graphics.pose().translate((targetX - textOriginX) / scale,
-                            (targetY - textOriginY) / scale, 0);
-                    icon.draw(graphics, 0, 0, drawWidth, drawHeight);
-                    graphics.pose().popPose();
-                } catch (RuntimeException exception) {
-                    graphics.pose().pushPose();
-                    graphics.pose().translate(0, (targetY - textOriginY) / scale, 0);
-                    graphics.drawString(font, Component.translatable("ui.portholequest.description_image_unavailable"),
-                            0, 0, 0xff776c60, false);
-                    graphics.pose().popPose();
-                }
+                images.add(new PlacedImage(PreparedIcon.parse(part.imageIconJson()), x, y, drawWidth, drawHeight));
                 y += drawHeight + 3;
             }
         }
-        y = drawTextRun(graphics, font, text, textRun, y, currentScroll);
+        y = prepareTextRun(font, text, textRun, y);
         contentHeight = y;
         scroll = clamp(scroll, 0, Math.max(0, contentHeight - TEXT_HEIGHT));
         placedText = List.copyOf(text);
+        placedImages = List.copyOf(images);
     }
 
-    private double drawTextRun(GuiGraphics graphics, Font font, List<PlacedText> placements,
-                               List<QuestLogSnapshot.DescriptionPart> parts, double y, double currentScroll) {
+    private static double prepareTextRun(Font font, List<PlacedText> placements,
+                                         List<QuestLogSnapshot.DescriptionPart> parts, double y) {
         if (parts.isEmpty()) return y;
         Component component = DescriptionTextLayout.compose(parts);
         parts.clear();
         List<FormattedCharSequence> lines = DescriptionTextLayout.wrap(component, font, TEXT_WIDTH);
         if (lines.isEmpty()) return y;
-        placements.add(new PlacedText(component, lines, y));
-        for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
-            graphics.pose().pushPose();
-            graphics.pose().translate(0, y - currentScroll + lineIndex * 9, 0);
-            FormattedCharSequence line = DescriptionTextLayout.highlightLink(lines.get(lineIndex),
-                    hoveredStyle == null ? null : hoveredStyle.getClickEvent());
-            graphics.drawString(font, line, 0, 0, 0xff423027, false);
-            graphics.pose().popPose();
-        }
+        placements.add(new PlacedText(lines, y));
         return y + lines.size() * 9;
+    }
+
+    private void renderPage(GuiGraphics graphics, Font font, float scale, int textOriginX, int textOriginY,
+                            double currentScroll) {
+        for (var placed : placedText) {
+            for (int lineIndex = 0; lineIndex < placed.lines().size(); lineIndex++) {
+                graphics.pose().pushPose();
+                try {
+                    graphics.pose().translate(0, placed.y() - currentScroll + lineIndex * 9, 0);
+                    FormattedCharSequence line = DescriptionTextLayout.highlightLink(placed.lines().get(lineIndex),
+                            hoveredStyle == null ? null : hoveredStyle.getClickEvent());
+                    graphics.drawString(font, line, 0, 0, 0xff423027, false);
+                } finally {
+                    graphics.pose().popPose();
+                }
+            }
+        }
+        for (var image : placedImages) {
+            int targetX = Math.round(textOriginX + image.x() * scale);
+            int targetY = Math.round(textOriginY + (float) (image.y() - currentScroll) * scale);
+            graphics.pose().pushPose();
+            try {
+                graphics.pose().translate((targetX - textOriginX) / scale, (targetY - textOriginY) / scale, 0);
+                image.icon().draw(graphics, 0, 0, image.width(), image.height());
+            } finally {
+                graphics.pose().popPose();
+            }
+        }
     }
 
     public Style styleAt(double mouseX, double mouseY, int frameLeft, int frameTop, float scale) {
@@ -269,17 +278,11 @@ public final class DescriptionDialog {
         }
         if (y >= TOP + HEIGHT - 20 && y < TOP + HEIGHT - 6) {
             if (x >= LEFT + 116 && x < LEFT + 150) {
-                if (page > 0) {
-                    page--;
-                    scroll = 0;
-                }
+                page(-1);
                 return ClickResult.CONTROL;
             }
             if (x >= LEFT + 153 && x < LEFT + 187) {
-                if (page + 1 < description.pages().size()) {
-                    page++;
-                    scroll = 0;
-                }
+                page(1);
                 return ClickResult.CONTROL;
             }
         }
@@ -305,11 +308,13 @@ public final class DescriptionDialog {
         return Math.max(min, Math.min(max, value));
     }
 
-    private record PlacedText(Component component, List<FormattedCharSequence> lines, double y) {
+    private record PlacedText(List<FormattedCharSequence> lines, double y) {
         private PlacedText {
             lines = List.copyOf(lines);
         }
     }
+
+    private record PlacedImage(PreparedIcon icon, int x, double y, int width, int height) {}
 
     public record State(long questId, int page, double scroll) {
         public State {

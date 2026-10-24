@@ -1,7 +1,5 @@
 package ink.myumoon.portholequest.client.ui;
 
-import com.google.gson.JsonParser;
-import dev.ftb.mods.ftblibrary.icon.Icon;
 import ink.myumoon.portholequest.model.QuestFlowchartLayout;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.client.gui.Font;
@@ -9,7 +7,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Transient, read-only quest dependency preview. Its viewport is discarded on close. */
@@ -20,11 +20,14 @@ public final class QuestFlowchartDialog {
     private static final int HEIGHT = 200;
     private static final int VIEW_LEFT = 4;
     private static final int VIEW_TOP = 20;
-    private static final int VIEW_WIDTH = 292;
-    private static final int VIEW_HEIGHT = 174;
+    private static final int VIEW_WIDTH = QuestFlowchartLayout.VIEWPORT_WIDTH;
+    private static final int VIEW_HEIGHT = QuestFlowchartLayout.VIEWPORT_HEIGHT;
     private static final int SCROLL_STEP = 24;
-    private final QuestFlowchartLayout.Graph graph;
-    private final Set<Long> chapterQuestIds;
+    private QuestFlowchartLayout.Graph graph;
+    private Set<Long> chapterQuestIds;
+    private Map<String, PreparedIcon> icons = Map.of();
+    private int contentWidth;
+    private int contentHeight;
     private double scrollX;
     private double scrollY;
     private DragTarget dragTarget = DragTarget.NONE;
@@ -32,11 +35,38 @@ public final class QuestFlowchartDialog {
     private double lastMouseY;
 
     public QuestFlowchartDialog(QuestFlowchartLayout.Graph graph, Set<Long> chapterQuestIds) {
-        this.graph = graph;
-        this.chapterQuestIds = Set.copyOf(chapterQuestIds);
+        updateGraph(graph, chapterQuestIds);
         scrollX = clamp(graph.initialScrollX(), 0, maxScrollX());
         scrollY = clamp(graph.initialScrollY(), 0, maxScrollY());
     }
+
+    /** Publish a fully prepared graph without resetting the currently open viewport. */
+    public void updateGraph(QuestFlowchartLayout.Graph prepared, Set<Long> chapterQuestIds) {
+        var preparedIcons = new HashMap<String, PreparedIcon>();
+        for (var node : prepared.nodes()) {
+            String json = node.quest().iconJson();
+            preparedIcons.computeIfAbsent(json, key -> {
+                PreparedIcon existing = icons.get(key);
+                return existing == null ? PreparedIcon.parse(key) : existing;
+            });
+        }
+        icons = Map.copyOf(preparedIcons);
+        this.graph = prepared;
+        this.chapterQuestIds = Set.copyOf(chapterQuestIds);
+        contentWidth = prepared.contentWidth();
+        contentHeight = prepared.contentHeight();
+        scrollX = clamp(scrollX, 0, maxScrollX());
+        scrollY = clamp(scrollY, 0, maxScrollY());
+    }
+
+    public QuestFlowchartLayout.Graph graph() { return graph; }
+
+    public void refreshResources() {
+        icons = Map.of();
+        updateGraph(graph, chapterQuestIds);
+    }
+
+    public boolean isDragging() { return dragTarget != DragTarget.NONE; }
 
     public void scroll(double mouseX, double mouseY, double amount, boolean horizontal,
                        int frameLeft, int frameTop, float scale) {
@@ -122,7 +152,7 @@ public final class QuestFlowchartDialog {
         var quest = node.quest();
         var tooltip = new ArrayList<Component>();
         tooltip.add(Component.literal(quest.title()));
-        tooltip.add(Component.translatable(statusKey(quest)));
+        tooltip.add(Component.translatable(statusKey(quest.state())));
         if (!chapterQuestIds.contains(quest.questId())) {
             tooltip.add(Component.translatable("ui.portholequest.flowchart.external"));
         }
@@ -252,16 +282,12 @@ public final class QuestFlowchartDialog {
 
     private void drawNodes(GuiGraphics graphics, Font font) {
         for (var node : graph.nodes()) {
-            graphics.fill(node.x(), node.y(), node.right(), node.bottom(), borderColor(node.quest()));
+            graphics.fill(node.x(), node.y(), node.right(), node.bottom(), borderColor(node.quest().state()));
             graphics.fill(node.x() + 2, node.y() + 2, node.right() - 2, node.bottom() - 2, 0xfff2e8d4);
             if (!chapterQuestIds.contains(node.quest().questId())) drawExternalBorder(graphics, node);
-            try {
-                Icon.getIcon(JsonParser.parseString(node.quest().iconJson())).draw(graphics,
-                        node.x() + (QuestFlowchartLayout.NODE_WIDTH - 16) / 2,
-                        node.y() + (QuestFlowchartLayout.NODE_HEIGHT - 16) / 2, 16, 16);
-            } catch (RuntimeException ignored) {
-                graphics.fill(node.x() + 10, node.y() + 10, node.x() + 22, node.y() + 22, 0xffa79779);
-            }
+            icons.get(node.quest().iconJson()).draw(graphics,
+                    node.x() + (QuestFlowchartLayout.NODE_WIDTH - 16) / 2,
+                    node.y() + (QuestFlowchartLayout.NODE_HEIGHT - 16) / 2, 16, 16);
         }
     }
 
@@ -314,19 +340,24 @@ public final class QuestFlowchartDialog {
         graphics.drawString(font, "x", x + Math.round(5 * scale), y + Math.round(3 * scale), 0xff423027, false);
     }
 
-    private static String statusKey(QuestLogSnapshot.GraphQuest quest) {
-        if (quest.completed() && quest.unclaimedRewards()) return "ui.portholequest.flowchart.state.reward";
-        if (quest.completed()) return "ui.portholequest.flowchart.state.completed";
-        if (quest.started()) return "ui.portholequest.flowchart.state.started";
-        return quest.canStart() ? "ui.portholequest.flowchart.state.available" : "ui.portholequest.flowchart.state.locked";
+    private static String statusKey(QuestLogSnapshot.QuestState state) {
+        return switch (state) {
+            case REWARD -> "ui.portholequest.flowchart.state.reward";
+            case COMPLETED -> "ui.portholequest.flowchart.state.completed";
+            case STARTED -> "ui.portholequest.flowchart.state.started";
+            case AVAILABLE -> "ui.portholequest.flowchart.state.available";
+            case LOCKED -> "ui.portholequest.flowchart.state.locked";
+        };
     }
 
-    private static int borderColor(QuestLogSnapshot.GraphQuest quest) {
-        if (quest.completed() && quest.unclaimedRewards()) return 0xffc99b43;
-        if (quest.completed()) return 0xff638b58;
-        if (quest.started()) return 0xff50879a;
-        if (quest.canStart()) return 0xffa48a55;
-        return 0xff776d68;
+    private static int borderColor(QuestLogSnapshot.QuestState state) {
+        return switch (state) {
+            case REWARD -> 0xffc99b43;
+            case COMPLETED -> 0xff638b58;
+            case STARTED -> 0xff50879a;
+            case AVAILABLE -> 0xffa48a55;
+            case LOCKED -> 0xff776d68;
+        };
     }
 
     private boolean inViewport(double x, double y) {
@@ -363,11 +394,11 @@ public final class QuestFlowchartDialog {
     private enum DragTarget { NONE, CANVAS, HORIZONTAL_SCROLLBAR, VERTICAL_SCROLLBAR }
 
     private double contentWidth() {
-        return graph.nodes().stream().mapToInt(QuestFlowchartLayout.Node::right).max().orElse(VIEW_WIDTH - 12) + 12;
+        return contentWidth;
     }
 
     private double contentHeight() {
-        return graph.nodes().stream().mapToInt(QuestFlowchartLayout.Node::bottom).max().orElse(VIEW_HEIGHT - 12) + 12;
+        return contentHeight;
     }
 
     private double maxScrollX() { return Math.max(0, contentWidth() - VIEW_WIDTH); }

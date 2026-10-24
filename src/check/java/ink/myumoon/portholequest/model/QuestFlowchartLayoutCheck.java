@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public final class QuestFlowchartLayoutCheck {
     public static void main(String[] args) {
+        checkQuestStates();
         var chapter = new QuestLogSnapshot.Chapter(100, 10, "Chapter", List.of(
                 entry(1, 100), linkedEntry(1, 100), entry(2, 100), entry(3, 100), entry(4, 100)));
         var group = new QuestLogSnapshot.Group(10, "Group", 0, List.of(chapter));
@@ -80,6 +81,39 @@ public final class QuestFlowchartLayoutCheck {
         require(questGraph.anchorQuestId() == 2L && questGraph.verticalAnchorQuestId() == 2L,
                 "Quest entry focuses the requested quest on both axes");
         var repeated = QuestFlowchartLayout.forChapter(snapshot, 100);
+        require(QuestFlowchartLayout.refresh(chapterGraph, snapshot, 100, null) == chapterGraph,
+                "Unchanged graph data reuses the complete graph");
+        var oldQuest = snapshot.graphQuests().getFirst();
+        var completedQuest = new QuestLogSnapshot.GraphQuest(oldQuest.questId(), oldQuest.chapterId(), oldQuest.groupId(),
+                oldQuest.title(), oldQuest.iconJson(), false, true, true, oldQuest.canStart(),
+                100, true, true, oldQuest.stableOrder(), oldQuest.dependencyQuestIds(), oldQuest.dependantQuestIds());
+        var changedQuests = new java.util.ArrayList<>(snapshot.graphQuests());
+        changedQuests.set(0, completedQuest);
+        var updated = new QuestLogSnapshot(snapshot.fileGeneration(), snapshot.teamId(), snapshot.pauseGame(),
+                snapshot.groups(), snapshot.chapterHeaders(), snapshot.questHeaders(), snapshot.questDetails(),
+                snapshot.bookTitle(), snapshot.bookIconJson(), changedQuests);
+        var refreshed = QuestFlowchartLayout.refresh(chapterGraph, updated, 100, null);
+        require(refreshed.node(1).quest().completed() && refreshed.node(1).quest().unclaimedRewards()
+                        && !refreshed.node(1).quest().detailsAvailable(),
+                "Refresh publishes progress, rewards and access restrictions together");
+        require(refreshed.width() == chapterGraph.width() && refreshed.height() == chapterGraph.height(),
+                "State-only refresh preserves canvas dimensions");
+        for (var node : chapterGraph.nodes()) {
+            var next = refreshed.node(node.quest().questId());
+            require(next.x() == node.x() && next.y() == node.y(), "State refresh preserves every node position");
+        }
+        for (int i = 0; i < chapterGraph.edges().size(); i++) {
+            require(chapterGraph.route(chapterGraph.edges().get(i)) == refreshed.route(refreshed.edges().get(i)),
+                    "State refresh reuses planned route points without rerouting");
+        }
+        changedQuests.removeIf(quest -> quest.questId() == 10);
+        var hidden = new QuestLogSnapshot(snapshot.fileGeneration(), snapshot.teamId(), snapshot.pauseGame(),
+                snapshot.groups(), snapshot.chapterHeaders(), snapshot.questHeaders(), snapshot.questDetails(),
+                snapshot.bookTitle(), snapshot.bookIconJson(), changedQuests);
+        var reduced = QuestFlowchartLayout.refresh(refreshed, hidden, 100, null);
+        require(reduced.node(10) == null && reduced.edges().stream().noneMatch(edge ->
+                        edge.from().quest().questId() == 10 || edge.to().quest().questId() == 10),
+                "Visibility changes rebuild scope without retaining hidden endpoints");
         require(chapterGraph.nodes().stream().map(node -> List.of(node.quest().questId(), node.x(), node.y())).toList()
                         .equals(repeated.nodes().stream()
                                 .map(node -> List.of(node.quest().questId(), node.x(), node.y())).toList()),
@@ -99,6 +133,34 @@ public final class QuestFlowchartLayoutCheck {
         require(cyclicGraph.height() == QuestFlowchartLayout.VIEWPORT_HEIGHT
                         && cyclicGraph.initialScrollY() == 0,
                 "A compact graph does not expose unnecessary vertical scrolling");
+        require(cyclicGraph.contentHeight() == QuestFlowchartLayout.VIEWPORT_HEIGHT
+                        && cyclicGraph.contentWidth() == QuestFlowchartLayout.VIEWPORT_WIDTH,
+                "Compact content uses the actual viewport without blank scroll ranges");
+
+        var starIds = List.of(1L, 2L, 3L, 4L, 5L);
+        var starQuests = starIds.stream().map(id -> quest(id, 100,
+                id == 1 ? List.of() : List.of(1L), id == 1 ? starIds.subList(1, 5) : List.of(), id.intValue())).toList();
+        var starSnapshot = new QuestLogSnapshot(1, UUID.randomUUID(), false,
+                List.of(new QuestLogSnapshot.Group(10, "Star", 0, List.of(new QuestLogSnapshot.Chapter(
+                        100, 10, "Star", starIds.stream().map(id -> entry(id, 100)).toList())))),
+                Map.of(), Map.of(), Map.of(), "Book", "{}", starQuests);
+        var star = QuestFlowchartLayout.forChapter(starSnapshot, 100);
+        require(star.nodes().stream().mapToInt(QuestFlowchartLayout.Node::row).min().orElseThrow() == -2
+                        && star.nodes().stream().mapToInt(QuestFlowchartLayout.Node::row).max().orElseThrow() == 1,
+                "Regression fixture has more branches above the trunk than below");
+        double trunkY = star.node(1).y() + QuestFlowchartLayout.NODE_HEIGHT / 2d;
+        require(trunkY - star.initialScrollY() == QuestFlowchartLayout.VIEWPORT_HEIGHT / 2d
+                        && star.initialScrollY() <= star.contentHeight() - QuestFlowchartLayout.VIEWPORT_HEIGHT,
+                "Actual scroll bounds preserve trunk centering for an asymmetric tree");
+        require(star.contentHeight() < star.height(),
+                "Centering reserves only necessary trailing space, not the full symmetric canvas");
+
+        var focus = new QuestFlowchartLayout.Node(starQuests.getFirst(), 400, 71, 0, 0);
+        var far = new QuestFlowchartLayout.Node(starQuests.getLast(), 800, 71, 1, 0);
+        var focused = new QuestFlowchartLayout.Graph(List.of(focus, far), List.of(), 844, 174, 1L, 1L);
+        require(focus.x() + QuestFlowchartLayout.NODE_WIDTH / 2d - focused.initialScrollX()
+                        == QuestFlowchartLayout.VIEWPORT_WIDTH / 2d,
+                "Quest focus uses the same viewport width as the dialog");
 
         var crossingGraph = QuestFlowchartLayout.forChapter(crossingSnapshot(), 100);
         require(adjacentLayerCrossings(crossingGraph) == 0,
@@ -106,6 +168,36 @@ public final class QuestFlowchartLayoutCheck {
 
         System.out.println("Quest flowchart layout checks PASS: scope, deduplication, edge direction, anchors, one-elbow routes, stability, cycles");
     }
+
+    private static void checkQuestStates() {
+        var cases = List.of(
+                new StateCase(false, false, false, false, QuestLogSnapshot.QuestState.LOCKED),
+                new StateCase(false, false, true, false, QuestLogSnapshot.QuestState.AVAILABLE),
+                new StateCase(true, false, true, false, QuestLogSnapshot.QuestState.STARTED),
+                new StateCase(false, true, false, false, QuestLogSnapshot.QuestState.COMPLETED),
+                new StateCase(false, true, false, true, QuestLogSnapshot.QuestState.REWARD),
+                new StateCase(true, true, true, true, QuestLogSnapshot.QuestState.REWARD));
+        for (var test : cases) {
+            var entry = new QuestLogSnapshot.Entry(1, 1, 100, "State", false, test.started(), test.completed(),
+                    test.canStart(), 0, test.unclaimedRewards(), false, test.expected());
+            var graphQuest = new QuestLogSnapshot.GraphQuest(1, 100, 10, "State", "{}", true,
+                    test.started(), test.completed(), test.canStart(), 0, test.unclaimedRewards(), false,
+                    0, List.of(), List.of(), test.expected());
+            require(entry.state() == test.expected() && graphQuest.state() == test.expected(),
+                    "Entry and graph snapshots share canonical QuestState " + test.expected());
+        }
+        boolean mismatchRejected = false;
+        try {
+            new QuestLogSnapshot.Entry(1, 1, 100, "Mismatch", false, false, false,
+                    true, 0, false, false, QuestLogSnapshot.QuestState.LOCKED);
+        } catch (IllegalArgumentException expected) {
+            mismatchRejected = true;
+        }
+        require(mismatchRejected, "Snapshots reject a QuestState inconsistent with authoritative facts");
+    }
+
+    private record StateCase(boolean started, boolean completed, boolean canStart,
+                             boolean unclaimedRewards, QuestLogSnapshot.QuestState expected) {}
 
     private static QuestLogSnapshot.Entry entry(long questId, long chapterId) {
         return new QuestLogSnapshot.Entry(questId, questId, chapterId, "Quest " + questId, false,
