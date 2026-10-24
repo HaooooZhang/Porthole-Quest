@@ -163,14 +163,18 @@ public record QuestLogSnapshot(long fileGeneration, UUID teamId, boolean pauseGa
 
     public record TaskDetail(long id, String typeId, String typeTitle, String title, String iconJson,
                              long progress, long maxProgress, boolean completed, boolean optional,
-                             boolean automatic, boolean progressHidden, boolean consumesResources) {
+                             boolean automatic, boolean progressHidden, boolean consumesResources,
+                             TaskAction action, boolean canSubmit) {
         public TaskDetail {
             Objects.requireNonNull(typeId);
             Objects.requireNonNull(typeTitle);
             Objects.requireNonNull(title);
             Objects.requireNonNull(iconJson);
+            Objects.requireNonNull(action);
         }
     }
+
+    public enum TaskAction { SUBMIT, AUTOMATIC, PASSIVE }
 
     public enum RewardState {
         CANT_CLAIM,

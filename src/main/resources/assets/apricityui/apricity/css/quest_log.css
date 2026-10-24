@@ -101,6 +101,7 @@ body {
 .detail-action-button { width: 93px; height: 12px; flex: 0 0 93px; border: 1px solid #9a8060; background: #d0bb95; color: #423027; line-height: 10px; text-align: center; overflow: hidden; pointer-events: none; }
 .detail-action-button[aria-disabled="true"] { opacity: 0.78; }
 .detail-action-flowchart { pointer-events: auto; cursor: pointer; }
+.quest-task-action[aria-disabled="false"], .quest-reward-card[aria-disabled="false"], .detail-action-track[aria-disabled="false"] { pointer-events: auto; cursor: pointer; }
 .detail-action-flowchart:hover { background: #eee5d0; }
 .detail-action-label { width: 100%; height: 10px; line-height: 10px; white-space: nowrap; }
 .detail-context { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: 1px solid #624331; pointer-events: none; }

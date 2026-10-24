@@ -6,6 +6,7 @@ import ink.myumoon.portholequest.client.screen.ScreenViewState;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.client.input.PortholeKeyMappings;
+import ink.myumoon.portholequest.client.sync.QuestAction;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
@@ -13,6 +14,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /** AUI owns header layout and subtitle wrapping; native MC draws Library icons and a pixel-aligned marquee. */
 public final class DetailHeaderView {
@@ -49,7 +52,8 @@ public final class DetailHeaderView {
     }
 
     public static DetailHeaderView bind(Document document, QuestLogSnapshot snapshot, ScreenViewState state,
-                                        long openedAt, BooleanSupplier currentBinding, Runnable openFlowchart) {
+                                        long openedAt, BooleanSupplier currentBinding, Runnable openFlowchart,
+                                        Consumer<QuestAction> actionHandler, Predicate<QuestAction> isPending) {
         Element panel = document.querySelector("#detail-panel");
         panel.replaceChildren();
         if (state.kind() == ScreenViewState.Kind.BLANK) {
@@ -115,19 +119,35 @@ public final class DetailHeaderView {
         int headerHeight = Math.min(160, Math.max(64, 51 + subtitleLines * 9));
         header.setInlineStyleProperty("height", headerHeight + "px");
         panel.setAttribute("data-detail-header-height", Integer.toString(headerHeight));
-        appendActionFooter(document, panel, currentBinding, openFlowchart);
+            appendActionFooter(document, panel, snapshot, state, currentBinding, openFlowchart, actionHandler, isPending);
         return new DetailHeaderView(title, iconJson, iconAnchor, titleAnchor, openedAt,
                 null, null, 0, 0, 0, 0);
     }
 
-    /** Visual-only D2 action affordances. R4 will add listeners and server actions. */
-    private static void appendActionFooter(Document document, Element panel,
-                                           BooleanSupplier currentBinding, Runnable openFlowchart) {
+    private static void appendActionFooter(Document document, Element panel, QuestLogSnapshot snapshot,
+                                           ScreenViewState state,
+                                           BooleanSupplier currentBinding, Runnable openFlowchart,
+                                           Consumer<QuestAction> actionHandler, Predicate<QuestAction> isPending) {
         Element footer = append(document, panel, "detail-footer", "");
         Element track = appendClass(document, footer, "detail-action-button detail-action-track", "");
-        track.setAttribute("aria-disabled", "true");
         track.setAttribute("data-action", "track");
-        appendClass(document, track, "detail-action-label", Component.translatable("ui.portholequest.action.track").getString());
+        if (state.kind() == ScreenViewState.Kind.QUEST) {
+            QuestAction action = new QuestAction(QuestAction.Type.TOGGLE_TRACKING, state.questId());
+            boolean waiting = isPending.test(action);
+            boolean tracked = snapshot.graphQuests().stream()
+                    .anyMatch(quest -> quest.questId() == state.questId() && quest.pinned());
+            track.setAttribute("aria-disabled", Boolean.toString(waiting));
+            appendClass(document, track, "detail-action-label", PortholeKeyMappings.trackLabel(tracked, true).getString());
+            track.addEventListener("click", event -> {
+                if (currentBinding.getAsBoolean() && !isPending.test(action)
+                        && event instanceof com.sighs.apricityui.event.MouseEvent mouse && mouse.button == 0) {
+                    actionHandler.accept(action);
+                }
+            });
+        } else {
+            track.setAttribute("aria-disabled", "true");
+            appendClass(document, track, "detail-action-label", PortholeKeyMappings.trackLabel(false, true).getString());
+        }
         if (!Config.FLOWCHART_ENABLED.get()) return;
         Element flowchart = appendClass(document, footer, "detail-action-button detail-action-flowchart", "");
         flowchart.setAttribute("aria-disabled", "false");

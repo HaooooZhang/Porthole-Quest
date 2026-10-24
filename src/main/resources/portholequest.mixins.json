@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_21",
+  "package": "ink.myumoon.portholequest.client.mixin",
+  "client": [
+    "FtbqNetClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -19,9 +19,18 @@ public final class PortholeKeyMappings {
     private PortholeKeyMappings() {}
 
     public static Component flowchartLabel(boolean showBinding) {
-        Component label = Component.translatable("ui.portholequest.action.flowchart");
-        return !showBinding || FLOWCHART.isUnbound() ? label
-                : Component.translatable("ui.portholequest.action.key_hint", label, FLOWCHART.getTranslatedKeyMessage());
+        return actionLabel("ui.portholequest.action.flowchart", FLOWCHART, showBinding);
+    }
+
+    public static Component trackLabel(boolean tracked, boolean showBinding) {
+        return actionLabel(tracked ? "ui.portholequest.action.untrack" : "ui.portholequest.action.track",
+                TRACK, showBinding);
+    }
+
+    private static Component actionLabel(String translationKey, KeyMapping mapping, boolean showBinding) {
+        Component label = Component.translatable(translationKey);
+        return !showBinding || mapping.isUnbound() ? label
+                : Component.translatable("ui.portholequest.action.key_hint", label, mapping.getTranslatedKeyMessage());
     }
 
     public static void register(RegisterKeyMappingsEvent event) {

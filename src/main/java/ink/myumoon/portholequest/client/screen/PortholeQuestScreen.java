@@ -1,6 +1,7 @@
 package ink.myumoon.portholequest.client.screen;
 
 import com.sighs.apricityui.init.Document;
+import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.client.Client;
 import com.sighs.apricityui.dev.resource.ResourcePreviewDialog;
 import com.sighs.apricityui.event.MouseEvent;
@@ -22,6 +23,7 @@ import ink.myumoon.portholequest.client.ui.QuestFlowchartDialog;
 import ink.myumoon.portholequest.client.ui.QuestFlowchartDebug;
 import ink.myumoon.portholequest.client.input.ChapterClickSequence;
 import ink.myumoon.portholequest.client.input.PortholeKeyMappings;
+import ink.myumoon.portholequest.client.sync.QuestAction;
 import ink.myumoon.portholequest.model.QuestFlowchartLayout;
 import ink.myumoon.portholequest.model.ChapterGroupTabs;
 import ink.myumoon.portholequest.model.GroupSelection;
@@ -64,6 +66,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private final boolean defaultExpanded;
     private final Map<Long, Boolean> expanded;
     private final Consumer<ListState> saveState;
+    private final Consumer<QuestAction> actionHandler;
+    private Set<QuestAction> pendingActions = Set.of();
     private double listScroll;
     private double detailScroll;
     private boolean listDirty;
@@ -80,7 +84,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private boolean boundFlowchartEnabled;
     private InputConstants.Key boundFlowchartKey;
     private KeyModifier boundFlowchartModifier;
+    private InputConstants.Key boundTrackKey;
+    private KeyModifier boundTrackModifier;
     private InputConstants.Key heldFlowchartInput;
+    private InputConstants.Key heldTrackInput;
     private QuestDetailView questDetail;
     private DescriptionDialog descriptionDialog;
     private QuestFlowchartDialog flowchartDialog;
@@ -95,6 +102,11 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private boolean descriptionExpanded;
 
     public PortholeQuestScreen(QuestLogSnapshot snapshot, ListState state, Consumer<ListState> saveState) {
+        this(snapshot, state, saveState, action -> {});
+    }
+
+    public PortholeQuestScreen(QuestLogSnapshot snapshot, ListState state, Consumer<ListState> saveState,
+                               Consumer<QuestAction> actionHandler) {
         super("screens/quest_log.html");
         this.snapshot = snapshot;
         this.detailHistory = new ScreenStateHistory(Config.MAX_DETAIL_HISTORY.get());
@@ -106,6 +118,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         this.descriptionExpanded = state.descriptionExpanded();
         this.detail = ScreenViewState.fromSession(state.detail()).retainValid(snapshot);
         this.saveState = saveState;
+        this.actionHandler = actionHandler;
         this.requestedGroup = state.group().retainValid(snapshot);
         this.effectiveGroup = this.requestedGroup;
         pruneChapterState();
@@ -490,7 +503,19 @@ public final class PortholeQuestScreen extends ApricityScreen {
         // NeoForge has already delivered KeyPressed.Pre (including AUI's focused DOM handler).
         // The parent still owns Escape and AUI's reload/viewport controls.
         if (super.keyPressed(keyCode, scanCode, modifiers)) return true;
-        return tryOpenFlowchart(InputConstants.getKey(keyCode, scanCode));
+        InputConstants.Key input = InputConstants.getKey(keyCode, scanCode);
+        if (tryTrackQuest(input)) return true;
+        return tryOpenFlowchart(input);
+    }
+
+    private boolean tryTrackQuest(InputConstants.Key input) {
+        if (detail.kind() != ScreenViewState.Kind.QUEST || !PortholeKeyMappings.TRACK.isActiveAndMatches(input)) return false;
+        if (heldTrackInput == null) {
+            heldTrackInput = input;
+            QuestAction action = new QuestAction(QuestAction.Type.TOGGLE_TRACKING, detail.questId());
+            if (!pendingActions.contains(action)) actionHandler.accept(action);
+        }
+        return true;
     }
 
     private boolean canOpenFlowchart() {
@@ -512,6 +537,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        if (InputConstants.getKey(keyCode, scanCode).equals(heldTrackInput)) {
+            heldTrackInput = null;
+            return true;
+        }
         if (InputConstants.getKey(keyCode, scanCode).equals(heldFlowchartInput)) {
             heldFlowchartInput = null;
             return true;
@@ -526,6 +555,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     private void resetPressedInputs() {
         heldFlowchartInput = null;
+        heldTrackInput = null;
         pressedTab = null;
         pressedFrameBack = false;
         previousMouse = null;
@@ -542,6 +572,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     public boolean beginSnapshotRefresh() {
         return refreshGuard.tryBeginRefresh(System.nanoTime(), isViewReadyForRefresh());
+    }
+
+    public boolean beginImmediateSnapshotRefresh() {
+        return refreshGuard.tryBeginImmediateRefresh(System.nanoTime(), isViewReadyForRefresh());
     }
 
     public void finishSnapshotRefresh() { refreshGuard.finishRefresh(System.nanoTime()); }
@@ -571,6 +605,9 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (canOpenFlowchart()
                 && (!PortholeKeyMappings.FLOWCHART.getKey().equals(boundFlowchartKey)
                 || PortholeKeyMappings.FLOWCHART.getKeyModifier() != boundFlowchartModifier)) detailDirty = true;
+        if (detail.kind() == ScreenViewState.Kind.QUEST
+                && (!PortholeKeyMappings.TRACK.getKey().equals(boundTrackKey)
+                || PortholeKeyMappings.TRACK.getKeyModifier() != boundTrackModifier)) refreshTrackActionState();
         captureListScroll();
         captureDetailScroll();
         refreshTabs();
@@ -591,6 +628,12 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     public void updateSnapshot(QuestLogSnapshot updated) {
         if (snapshot.equals(updated)) return;
+        if (flowchartDialog == null && sameExceptPinned(snapshot, updated)) {
+            snapshot = updated;
+            refreshTrackActionState();
+            return;
+        }
+        QuestLogSnapshot previous = snapshot;
         long refreshStarted = flowchartDialog == null ? 0 : System.nanoTime();
         captureListScroll();
         captureDetailScroll();
@@ -612,12 +655,21 @@ public final class PortholeQuestScreen extends ApricityScreen {
                         entry == null ? "" : entry.title(), current.description(), descriptionDialog.state());
             }
         }
+        boolean selectedQuestChanged = detail.kind() == ScreenViewState.Kind.QUEST
+                && (!java.util.Objects.equals(previous.questDetails().get(detail.questId()), updated.questDetails().get(detail.questId()))
+                || !java.util.Objects.equals(previous.questHeaders().get(detail.questId()), updated.questHeaders().get(detail.questId()))
+                || !java.util.Objects.equals(questTitle(previous, detail.questId()), questTitle(updated, detail.questId())));
+        boolean selectedChapterChanged = detail.kind() == ScreenViewState.Kind.CHAPTER
+                && (!java.util.Objects.equals(chapter(previous, detail.chapterId()), chapter(updated, detail.chapterId()))
+                || !java.util.Objects.equals(previous.chapterHeaders().get(detail.chapterId()),
+                updated.chapterHeaders().get(detail.chapterId())));
         snapshot = updated;
         descriptionDialog = preparedDescription;
         if (preparedGraph == null) flowchartDialog = null;
         else flowchartDialog.updateGraph(preparedGraph, chapterQuestIds(updated, detail.chapterId()));
         pruneDetailHistory();
-        detailDirty = true;
+        detailDirty = !detailStillValid || selectedQuestChanged || selectedChapterChanged;
+        chapterDetailDirty = detail.kind() == ScreenViewState.Kind.CHAPTER && selectedChapterChanged;
         chapterClicks.reset();
         pruneChapterState();
         requestedGroup = requestedGroup.retainValid(updated);
@@ -628,6 +680,68 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     public boolean hasFileGeneration(long generation) {
         return snapshot.fileGeneration() == generation;
+    }
+
+    public QuestLogSnapshot snapshot() { return snapshot; }
+
+    public void setPendingActions(Set<QuestAction> actions) {
+        Set<QuestAction> next = Set.copyOf(actions);
+        if (pendingActions.equals(next)) return;
+        pendingActions = next;
+        if (questDetail != null) questDetail.updatePendingActions(next);
+        refreshTrackActionState();
+    }
+
+    private void refreshTrackActionState() {
+        Document document = getLinkedDocument();
+        if (document == null || document.isDisposed() || detail.kind() != ScreenViewState.Kind.QUEST) return;
+        Element track = document.querySelector(".detail-action-track");
+        if (track == null) return;
+        QuestAction trackAction = new QuestAction(QuestAction.Type.TOGGLE_TRACKING, detail.questId());
+        boolean waiting = pendingActions.contains(trackAction);
+        boolean tracked = snapshot.graphQuests().stream()
+                .anyMatch(quest -> quest.questId() == detail.questId() && quest.pinned());
+        track.setAttribute("aria-disabled", Boolean.toString(waiting));
+        Element label = track.querySelector(".detail-action-label");
+        if (label != null) label.setTextContent(PortholeKeyMappings.trackLabel(tracked, true).getString());
+        boundTrackKey = PortholeKeyMappings.TRACK.getKey();
+        boundTrackModifier = PortholeKeyMappings.TRACK.getKeyModifier();
+        document.commitRenderState();
+    }
+
+    private static String questTitle(QuestLogSnapshot source, long questId) {
+        return source.groups().stream().flatMap(group -> group.chapters().stream())
+                .flatMap(chapter -> chapter.entries().stream())
+                .filter(entry -> entry.questId() == questId).map(QuestLogSnapshot.Entry::title)
+                .findFirst().orElse(null);
+    }
+
+    private static QuestLogSnapshot.Chapter chapter(QuestLogSnapshot source, long chapterId) {
+        return source.groups().stream().flatMap(group -> group.chapters().stream())
+                .filter(chapter -> chapter.id() == chapterId)
+                .findFirst().orElse(null);
+    }
+
+    private static boolean sameExceptPinned(QuestLogSnapshot left, QuestLogSnapshot right) {
+        return normalizePinned(left).equals(normalizePinned(right));
+    }
+
+    private static QuestLogSnapshot normalizePinned(QuestLogSnapshot source) {
+        var groups = source.groups().stream().map(group -> new QuestLogSnapshot.Group(group.id(), group.title(),
+                group.fileOrder(), group.chapters().stream().map(chapter -> new QuestLogSnapshot.Chapter(
+                        chapter.id(), chapter.groupId(), chapter.title(), chapter.entries().stream()
+                        .map(entry -> new QuestLogSnapshot.Entry(entry.entryId(), entry.questId(), entry.chapterId(),
+                                entry.title(), entry.link(), entry.started(), entry.completed(), entry.canStart(),
+                                entry.progressPercent(), entry.unclaimedRewards(), false, entry.state())).toList()))
+                .toList())).toList();
+        var graphQuests = source.graphQuests().stream().map(quest -> new QuestLogSnapshot.GraphQuest(
+                quest.questId(), quest.chapterId(), quest.groupId(), quest.title(), quest.iconJson(),
+                quest.detailsAvailable(), quest.started(), quest.completed(), quest.canStart(),
+                quest.progressPercent(), quest.unclaimedRewards(), false, quest.stableOrder(),
+                quest.dependencyQuestIds(), quest.dependantQuestIds(), quest.state())).toList();
+        return new QuestLogSnapshot(source.fileGeneration(), source.teamId(), source.pauseGame(), groups,
+                source.chapterHeaders(), source.questHeaders(), source.questDetails(), source.bookTitle(),
+                source.bookIconJson(), graphQuests);
     }
 
     private void bindCurrentDocument() {
@@ -664,16 +778,19 @@ public final class PortholeQuestScreen extends ApricityScreen {
             boundFlowchartEnabled = Config.FLOWCHART_ENABLED.get();
             boundFlowchartKey = PortholeKeyMappings.FLOWCHART.getKey();
             boundFlowchartModifier = PortholeKeyMappings.FLOWCHART.getKeyModifier();
+            boundTrackKey = PortholeKeyMappings.TRACK.getKey();
+            boundTrackModifier = PortholeKeyMappings.TRACK.getKeyModifier();
             detailHeader = DetailHeaderView.bind(document, snapshot, detail, detailOpenedAt,
                     () -> getLinkedDocument() == document && document.isCurrentGeneration(generation)
                             && detail.kind() != ScreenViewState.Kind.BLANK,
-                    this::openFlowchart);
+                    this::openFlowchart, actionHandler, action -> pendingActions.contains(action));
             questDetail = null;
         }
         if (detail.kind() == ScreenViewState.Kind.QUEST && rebindDetail) {
             questDetail = QuestDetailView.bind(document, snapshot, detail,
                     () -> getLinkedDocument() == document && document.isCurrentGeneration(generation),
                     this::openQuest, this::openDescription, this::setDescriptionExpanded,
+                    actionHandler, action -> pendingActions.contains(action),
                     descriptionExpanded);
         } else if (detail.kind() == ScreenViewState.Kind.CHAPTER && (rebindDetail || chapterDetailDirty)) {
             ChapterDetailView.bind(document, snapshot, filter, detail,

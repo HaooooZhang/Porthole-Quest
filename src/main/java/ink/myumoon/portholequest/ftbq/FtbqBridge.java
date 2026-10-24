@@ -5,6 +5,9 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.task.Task;
+import dev.ftb.mods.ftbquests.quest.task.ItemTask;
+import dev.ftb.mods.ftbquests.quest.task.KillTask;
+import dev.ftb.mods.ftbquests.quest.task.ObservationTask;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import dev.ftb.mods.ftbquests.quest.reward.RewardClaimType;
@@ -32,6 +35,10 @@ import static ink.myumoon.portholequest.model.QuestLogReadResult.State;
 public final class FtbqBridge {
     private ClientQuestFile observedFile;
     private long fileGeneration;
+
+    public long fileGeneration() {
+        return fileGeneration;
+    }
 
     public QuestLogReadResult capture() {
         Minecraft minecraft = Minecraft.getInstance();
@@ -191,10 +198,12 @@ public final class FtbqBridge {
             String typeTitle = task.getType().getDisplayName().getString();
             String title = task.getAltTitle().getString();
             if (title.isBlank()) title = typeTitle;
+            boolean canSubmit = task.isValid() && data.canStartTasks(quest) && !completed;
+            if (task instanceof ItemTask itemTask && itemTask.isTaskScreenOnly()) canSubmit = false;
             tasks.add(new QuestLogSnapshot.TaskDetail(task.id, task.getType().getTypeId().toString(), typeTitle, title,
                     task.getAltIcon().getJson().toString(), data.getProgress(task), task.getMaxProgress(), completed,
                     task.isOptionalForProgression(data), task.autoSubmitOnPlayerTick() > 0, task.hideProgressNumbers(),
-                    task.consumesResources()));
+                    task.consumesResources(), taskAction(task), canSubmit));
             // This mirrors ViewQuestPanel: sequential quests expose the first
             // unfinished task and do not leak later conditions into the journal.
             if (sequential && !completed) break;
@@ -218,6 +227,16 @@ public final class FtbqBridge {
         }
         return new QuestLogSnapshot.QuestDetail(descriptionLines, hideText, complexDescription, paginated,
                 description, tasks, rewards);
+    }
+
+    private static QuestLogSnapshot.TaskAction taskAction(Task task) {
+        if (task.autoSubmitOnPlayerTick() > 0) return QuestLogSnapshot.TaskAction.AUTOMATIC;
+        if (task instanceof ItemTask itemTask) {
+            return itemTask.submitItemsOnInventoryChange() && !itemTask.isTaskScreenOnly()
+                    ? QuestLogSnapshot.TaskAction.AUTOMATIC : QuestLogSnapshot.TaskAction.SUBMIT;
+        }
+        if (task instanceof KillTask || task instanceof ObservationTask) return QuestLogSnapshot.TaskAction.PASSIVE;
+        return QuestLogSnapshot.TaskAction.SUBMIT;
     }
 
     private static Component parseDescriptionComponent(Component source) {

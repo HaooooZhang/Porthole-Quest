@@ -5,6 +5,7 @@ import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.client.screen.ScreenViewState;
+import ink.myumoon.portholequest.client.sync.QuestAction;
 import ink.myumoon.portholequest.model.QuestLogSnapshot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -15,7 +16,10 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -25,6 +29,7 @@ public final class QuestDetailView {
     private final List<IconPlacement> icons;
     private final Element content;
     private final List<TooltipTarget> tooltipTargets;
+    private final Map<QuestAction, Element> actionPlacements;
     private final List<TextPlacement> descriptionText;
     private final Element descriptionContainer;
     private final Element expandButton;
@@ -34,12 +39,14 @@ public final class QuestDetailView {
     private Style hoveredDescriptionStyle;
 
     private QuestDetailView(List<IconPlacement> icons, Element content, List<TooltipTarget> tooltipTargets,
+                            Map<QuestAction, Element> actionPlacements,
                             List<TextPlacement> descriptionText, Element descriptionContainer,
                             Element expandButton, TextPlacement descriptionPlacement,
                             int previewRows, boolean descriptionExpanded) {
         this.icons = List.copyOf(icons);
         this.content = content;
         this.tooltipTargets = List.copyOf(tooltipTargets);
+        this.actionPlacements = Map.copyOf(actionPlacements);
         this.descriptionText = List.copyOf(descriptionText);
         this.descriptionContainer = descriptionContainer;
         this.expandButton = expandButton;
@@ -53,6 +60,8 @@ public final class QuestDetailView {
                                        Consumer<QuestLogSnapshot.Entry> openQuest,
                                        Consumer<Long> openDescription,
                                        BiConsumer<Long, Boolean> setDescriptionExpanded,
+                                       Consumer<QuestAction> actionHandler,
+                                       java.util.function.Predicate<QuestAction> isPending,
                                        boolean descriptionExpanded) {
         Element panel = require(document, "#detail-panel");
         if (state.kind() != ScreenViewState.Kind.QUEST) return emptyView();
@@ -67,11 +76,12 @@ public final class QuestDetailView {
         QuestLogSnapshot.QuestDetail detail = snapshot.questDetails().get(state.questId());
         if (detail == null) {
             append(document, content, "detail-empty", Component.translatable("ui.portholequest.detail_unavailable").getString(), 0);
-            return new QuestDetailView(List.of(), content, List.of(), List.of(), null, null, null, 0, false);
+            return new QuestDetailView(List.of(), content, List.of(), Map.of(), List.of(), null, null, null, 0, false);
         }
 
         var icons = new ArrayList<IconPlacement>();
         var tooltipTargets = new ArrayList<TooltipTarget>();
+        var actionPlacements = new HashMap<QuestAction, Element>();
         var descriptionText = new ArrayList<TextPlacement>();
         Element descriptionContainer = null;
         Element expandButton = null;
@@ -134,14 +144,24 @@ public final class QuestDetailView {
                         : Component.translatable("ui.portholequest.incomplete").getString())
                         : task.progress() + "/" + task.maxProgress();
                 append(document, row, "quest-task-progress", progress, 0);
-                String action = task.automatic()
-                        ? Component.translatable("ui.portholequest.task_automatic").getString()
-                        : task.completed()
-                        ? Component.translatable("ui.portholequest.complete").getString()
-                        : Component.translatable("ui.portholequest.task_submit").getString();
+                QuestAction submit = new QuestAction(QuestAction.Type.SUBMIT_TASK, task.id());
+                boolean submitAllowed = task.action() == QuestLogSnapshot.TaskAction.SUBMIT && task.canSubmit();
+                String action = switch (task.action()) {
+                    case AUTOMATIC -> Component.translatable("ui.portholequest.task_automatic").getString();
+                    case PASSIVE -> Component.translatable("ui.portholequest.task_passive").getString();
+                    case SUBMIT -> task.completed() ? Component.translatable("ui.portholequest.complete").getString()
+                            : Component.translatable("ui.portholequest.task_submit").getString();
+                };
                 Element actionElement = append(document, row, "quest-task-action", action, 0);
-                actionElement.setAttribute("aria-disabled", "true");
-                actionElement.setAttribute("data-action", task.automatic() ? "automatic" : "submit");
+                boolean waiting = submitAllowed && isPending.test(submit);
+                actionElement.setAttribute("aria-disabled", Boolean.toString(!submitAllowed || waiting));
+                actionElement.setAttribute("data-action", task.action().name().toLowerCase());
+                if (submitAllowed) actionPlacements.put(submit,
+                        actionElement);
+                if (submitAllowed) actionElement.addEventListener("click", event -> {
+                    if (!currentBinding.getAsBoolean() || !(event instanceof MouseEvent mouse) || mouse.button != 0) return;
+                    if (!isPending.test(submit)) actionHandler.accept(submit);
+                });
                 tooltipTargets.add(new TooltipTarget(row, List.of(
                         Component.literal(task.title()),
                         Component.literal(task.typeTitle()).withStyle(net.minecraft.ChatFormatting.GRAY),
@@ -161,13 +181,24 @@ public final class QuestDetailView {
                 Element icon = append(document, card, "detail-inline-icon", "", 0);
                 icons.add(new IconPlacement(reward.iconJson(), icon));
                 append(document, card, "quest-reward-title", reward.title(), 0);
+                QuestAction claim = new QuestAction(QuestAction.Type.CLAIM_REWARD, reward.id());
+                boolean claimAllowed = reward.state() == QuestLogSnapshot.RewardState.CAN_CLAIM && !reward.automatic();
+                boolean waiting = claimAllowed && isPending.test(claim);
                 String rewardState = switch (reward.state()) {
                     case CAN_CLAIM -> Component.translatable("ui.portholequest.reward_can_claim").getString();
                     case CLAIMED -> Component.translatable("ui.portholequest.reward_claimed").getString();
                     case CANT_CLAIM -> Component.translatable("ui.portholequest.reward_locked").getString();
                 };
-                append(document, card, "quest-reward-state", reward.automatic()
+                Element stateElement = append(document, card, "quest-reward-state", reward.automatic()
                         ? Component.translatable("ui.portholequest.reward_automatic").getString() : rewardState, 0);
+                stateElement.setAttribute("aria-disabled", Boolean.toString(!claimAllowed || waiting));
+                card.setAttribute("aria-disabled", Boolean.toString(!claimAllowed || waiting));
+                if (claimAllowed) actionPlacements.put(claim,
+                        card);
+                if (claimAllowed) card.addEventListener("click", event -> {
+                    if (currentBinding.getAsBoolean() && !isPending.test(claim)
+                            && event instanceof MouseEvent mouse && mouse.button == 0) actionHandler.accept(claim);
+                });
                 tooltipTargets.add(new TooltipTarget(card, List.of(
                         Component.literal(reward.title()),
                         Component.literal(reward.typeTitle()).withStyle(net.minecraft.ChatFormatting.GRAY),
@@ -176,12 +207,19 @@ public final class QuestDetailView {
                                 .withStyle(net.minecraft.ChatFormatting.GRAY))));
             }
         }
-        return new QuestDetailView(icons, content, tooltipTargets, descriptionText, descriptionContainer,
+        return new QuestDetailView(icons, content, tooltipTargets, actionPlacements, descriptionText, descriptionContainer,
                 expandButton, descriptionPlacement, Config.DESCRIPTION_PREVIEW_LINES.get(), descriptionExpanded);
     }
 
     private static QuestDetailView emptyView() {
-        return new QuestDetailView(List.of(), null, List.of(), List.of(), null, null, null, 0, false);
+        return new QuestDetailView(List.of(), null, List.of(), Map.of(), List.of(), null, null, null, 0, false);
+    }
+
+    public void updatePendingActions(Set<QuestAction> pending) {
+        for (var entry : actionPlacements.entrySet()) {
+            boolean waiting = pending.contains(entry.getKey());
+            entry.getValue().setAttribute("aria-disabled", Boolean.toString(waiting));
+        }
     }
 
     public void setDescriptionExpanded(boolean expanded) {
@@ -309,6 +347,7 @@ public final class QuestDetailView {
             lines = List.copyOf(lines);
         }
     }
+
 
     private static boolean contains(Element.DOMRect rect, double x, double y) {
         return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom;

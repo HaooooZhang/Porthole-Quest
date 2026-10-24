@@ -61,6 +61,7 @@ neoForge {
             client()
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // programArguments.addAll '--username', 'TestB'
         }
 
         server {
@@ -253,6 +254,14 @@ def checkQuestFlowchartLayout = tasks.register('checkQuestFlowchartLayout', Java
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
 }
 tasks.named('check') { dependsOn checkQuestFlowchartLayout }
+
+def checkPendingQuestActions = tasks.register('checkPendingQuestActions', JavaExec) {
+    dependsOn compileChecks
+    classpath = files(checkClasses, sourceSets.main.output)
+    mainClass = 'ink.myumoon.portholequest.client.sync.PendingQuestActionsCheck'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn checkPendingQuestActions }
 
 // Optional local development tool; uses the production layout and routing without Minecraft.
 def simulatorClasses = layout.buildDirectory.dir('simulator/classes')

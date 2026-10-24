@@ -45,7 +45,8 @@
   "ui.portholequest.chapter_state.not_started": "未开始",
   "ui.portholequest.chapter_state.started": "进行中",
   "ui.portholequest.chapter_state.completed": "已完成",
-  "ui.portholequest.action.track": "追踪 [Space]",
+  "ui.portholequest.action.track": "追踪",
+  "ui.portholequest.action.untrack": "取消追踪",
   "ui.portholequest.action.flowchart": "流程图",
   "ui.portholequest.action.key_hint": "%s [%s]",
   "ui.portholequest.flowchart.title": "流程图",
@@ -77,9 +78,12 @@
   "ui.portholequest.complete": "已完成",
   "ui.portholequest.incomplete": "未完成",
   "ui.portholequest.task_automatic": "自动",
+  "ui.portholequest.task_passive": "自动记录",
   "ui.portholequest.task_submit": "提交",
   "ui.portholequest.reward_can_claim": "可领取",
   "ui.portholequest.reward_claimed": "已领取",
   "ui.portholequest.reward_locked": "不可领取",
-  "ui.portholequest.reward_automatic": "自动领取"
+  "ui.portholequest.reward_automatic": "自动领取",
+  "message.portholequest.action_failed": "任务操作未成功",
+  "message.portholequest.action_unconfirmed": "无法确认任务操作结果"
 }

@@ -45,7 +45,8 @@
   "ui.portholequest.chapter_state.not_started": "Not started",
   "ui.portholequest.chapter_state.started": "In progress",
   "ui.portholequest.chapter_state.completed": "Completed",
-  "ui.portholequest.action.track": "Track [Space]",
+  "ui.portholequest.action.track": "Track",
+  "ui.portholequest.action.untrack": "Untrack",
   "ui.portholequest.action.flowchart": "Flowchart",
   "ui.portholequest.action.key_hint": "%s [%s]",
   "ui.portholequest.flowchart.title": "Flowchart",
@@ -77,9 +78,12 @@
   "ui.portholequest.complete": "Complete",
   "ui.portholequest.incomplete": "Incomplete",
   "ui.portholequest.task_automatic": "Automatic",
+  "ui.portholequest.task_passive": "Tracked automatically",
   "ui.portholequest.task_submit": "Submit",
   "ui.portholequest.reward_can_claim": "Can claim",
   "ui.portholequest.reward_claimed": "Claimed",
   "ui.portholequest.reward_locked": "Unavailable",
-  "ui.portholequest.reward_automatic": "Auto-claimed"
+  "ui.portholequest.reward_automatic": "Auto-claimed",
+  "message.portholequest.action_failed": "Quest action was not confirmed",
+  "message.portholequest.action_unconfirmed": "Could not confirm quest action"
 }

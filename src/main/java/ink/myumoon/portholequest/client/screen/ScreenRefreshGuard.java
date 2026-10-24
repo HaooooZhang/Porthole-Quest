@@ -14,7 +14,16 @@ public final class ScreenRefreshGuard {
     private long nextRefresh;
 
     public boolean tryBeginRefresh(long now, boolean viewReady) {
-        if (closed || refreshing || rendering || awaitingFrame || !viewReady || now - nextRefresh < 0) return false;
+        return tryBeginRefresh(now, viewReady, false);
+    }
+
+    public boolean tryBeginImmediateRefresh(long now, boolean viewReady) {
+        return tryBeginRefresh(now, viewReady, true);
+    }
+
+    private boolean tryBeginRefresh(long now, boolean viewReady, boolean immediate) {
+        if (closed || refreshing || rendering || awaitingFrame || !viewReady
+                || !immediate && now - nextRefresh < 0) return false;
         refreshing = true;
         refreshStarted = now;
         return true;
