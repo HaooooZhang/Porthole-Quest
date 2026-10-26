@@ -26,6 +26,14 @@ import java.util.function.Consumer;
 
 /** Read-only Quest Detail body. Actions remain disabled until the later action slices. */
 public final class QuestDetailView {
+    public record HitResult(Style style, List<Component> tooltip) {
+        public static final HitResult EMPTY = new HitResult(null, List.of());
+
+        public HitResult {
+            tooltip = List.copyOf(tooltip);
+        }
+    }
+
     private final List<IconPlacement> icons;
     private final Element content;
     private final List<TooltipTarget> tooltipTargets;
@@ -280,24 +288,34 @@ public final class QuestDetailView {
     }
 
     public List<Component> tooltipAt(double x, double y) {
-        if (!insideContent(x, y)) return List.of();
-        for (var target : tooltipTargets) {
-            if (contains(target.element().getBoundingClientRect(), x, y)) return target.lines();
-        }
-        return List.of();
+        return hitAt(x, y).tooltip();
     }
 
     public Style styleAt(double x, double y) {
-        if (!insideContent(x, y)) return null;
+        return hitAt(x, y).style();
+    }
+
+    /** Resolves the detail hover state once so style effects and tooltips share the same DOM hit test. */
+    public HitResult hitAt(double x, double y) {
+        if (!insideContent(x, y)) return HitResult.EMPTY;
+        Style style = null;
         for (var placement : descriptionText) {
             var rect = placement.anchor().getBoundingClientRect();
-            if (!contains(rect, x, y)) continue;
-            int row = Math.max(0, (int) ((y - rect.top) / 9));
-            if (row >= placement.visibleRows()) return null;
-            return DescriptionTextLayout.styleAtWidth(placement.allLines().get(row),
-                    Math.max(0, x - rect.left), Minecraft.getInstance().font);
+            if (contains(rect, x, y)) {
+                int row = Math.max(0, (int) ((y - rect.top) / 9));
+                if (row < placement.visibleRows()) {
+                    style = DescriptionTextLayout.styleAtWidth(placement.allLines().get(row),
+                            Math.max(0, x - rect.left), Minecraft.getInstance().font);
+                }
+                break;
+            }
         }
-        return null;
+        for (var target : tooltipTargets) {
+            if (contains(target.element().getBoundingClientRect(), x, y)) {
+                return new HitResult(style, target.lines());
+            }
+        }
+        return new HitResult(style, List.of());
     }
 
     public void setHoveredDescriptionStyle(Style style) {

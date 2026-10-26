@@ -33,6 +33,10 @@ repositories {
             includeGroup "curse.maven"
         }
     }
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+    }
 }
 
 base {
@@ -132,7 +136,7 @@ dependencies {
     implementation "curse.maven:ftb-library-forge-404465:8226923"
     implementation "curse.maven:ftb-teams-forge-404468:7878281"
     implementation "curse.maven:ftb-quests-forge-289412:8253474"
-    implementation "curse.maven:apricityui-1470115:9066030"
+    implementation "maven.modrinth:UfPdUeGy:JTiPNUjC"
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
     // The group id is ignored when searching -- in this case, it is "blank"

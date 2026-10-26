@@ -77,6 +77,12 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private GroupSelection requestedGroup;
     private GroupSelection effectiveGroup = GroupSelection.ALL;
     private List<ChapterGroupTabs.Slot> tabs = List.of();
+    private QuestLogSnapshot projectedSnapshot;
+    private ListFilter projectedFilter;
+    private int projectedWidth = -1;
+    private int projectedHeight = -1;
+    private double projectedScale = Double.NaN;
+    private List<QuestLogSnapshot.Group> visibleGroups = List.of();
     private ChapterGroupTabs.Slot pressedTab;
     private ScreenViewState detail = ScreenViewState.BLANK;
     private final ScreenStateHistory detailHistory;
@@ -100,6 +106,12 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private boolean pressedFrameBack;
     private long detailOpenedAt;
     private boolean descriptionExpanded;
+    private QuestDetailView.HitResult questDetailHover = QuestDetailView.HitResult.EMPTY;
+    private double questDetailHoverX = Double.NaN;
+    private double questDetailHoverY = Double.NaN;
+    private long questDetailHoverBindingVersion = -1;
+    private long questDetailHoverGeneration = -1;
+    private double questDetailHoverScroll = Double.NaN;
 
     public PortholeQuestScreen(QuestLogSnapshot snapshot, ListState state, Consumer<ListState> saveState) {
         this(snapshot, state, saveState, action -> {});
@@ -325,15 +337,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
             previousMouse = new Position(mouseX, mouseY);
             return;
         }
-        Style descriptionStyle = null;
-        if (questDetail != null && detail.kind() == ScreenViewState.Kind.QUEST) {
-            Document document = getLinkedDocument();
-            if (document != null && !document.isDisposed()) {
-                Position local = document.guiToDocumentPosition(new Position(mouseX, mouseY));
-                descriptionStyle = questDetail.styleAt(local.x, local.y);
-            }
-        }
-        if (questDetail != null) questDetail.setHoveredDescriptionStyle(descriptionStyle);
+        QuestDetailView.HitResult detailHover = resolveQuestDetailHover(mouseX, mouseY);
+        if (questDetail != null) questDetail.setHoveredDescriptionStyle(detailHover.style());
         MouseEvent event = pointerEvent("mousemove", mouseX, mouseY, -1);
         if (previousMouse != null) {
             event.movementX = mouseX - previousMouse.x;
@@ -391,13 +396,13 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 }
                 if (document == boundDocument && document.isCurrentGeneration(boundGeneration) && !detailDirty
                         && questDetail != null) {
-                    Position localMouse = document.guiToDocumentPosition(new Position(mouseX, mouseY));
-                    questDetail.setHoveredDescriptionStyle(questDetail.styleAt(localMouse.x, localMouse.y));
+                    QuestDetailView.HitResult detailHover = resolveQuestDetailHover(mouseX, mouseY);
+                    questDetail.setHoveredDescriptionStyle(detailHover.style());
                     questDetail.draw(graphics, frameLeft, frameTop, viewport.renderScale());
                 }
             }
             ResourcePreviewDialog.draw(graphics.pose(), document);
-            Client.drawPersistentScreenDocuments(graphics, document);
+            Base.drawPersistentScreenDocuments(graphics.pose(), document);
             graphics.flush();
             drawFrameBack(graphics, mouseX, mouseY, tabScale);
             for (var tab : tabs) if (tab.selection().equals(effectiveGroup)) {
@@ -444,9 +449,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 else {
                     drawQuestTooltip(graphics, mouseX, mouseY);
                     if (questDetail != null) {
-                        Position local = document == null ? new Position(0, 0)
-                                : document.guiToDocumentPosition(new Position(mouseX, mouseY));
-                        Style style = questDetail.styleAt(local.x, local.y);
+                        Style style = resolveQuestDetailHover(mouseX, mouseY).style();
                         if (style != null) graphics.renderComponentHoverEffect(font, style, mouseX, mouseY);
                     }
                     drawQuestDetailTooltip(graphics, mouseX, mouseY);
@@ -566,7 +569,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
         Document document = getLinkedDocument();
         return document != null && document == boundDocument && document.isCurrentGeneration(boundGeneration)
                 && !listDirty && !detailDirty && !chapterDetailDirty
-                && !document.isInitialCommitSlicing() && !document.hasPendingRenderState()
+                // AUI 1.2.9 reports pending layout/render commits through this single check.
+                && !document.hasPendingRenderState()
                 && (flowchartDialog == null || !flowchartDialog.isDragging());
     }
 
@@ -723,25 +727,67 @@ public final class PortholeQuestScreen extends ApricityScreen {
     }
 
     private static boolean sameExceptPinned(QuestLogSnapshot left, QuestLogSnapshot right) {
-        return normalizePinned(left).equals(normalizePinned(right));
+        return left.fileGeneration() == right.fileGeneration()
+                && left.teamId().equals(right.teamId())
+                && left.pauseGame() == right.pauseGame()
+                && left.chapterHeaders().equals(right.chapterHeaders())
+                && left.questHeaders().equals(right.questHeaders())
+                && left.questDetails().equals(right.questDetails())
+                && left.bookTitle().equals(right.bookTitle())
+                && left.bookIconJson().equals(right.bookIconJson())
+                && sameGroupsExceptPinned(left.groups(), right.groups())
+                && sameGraphQuestsExceptPinned(left.graphQuests(), right.graphQuests());
     }
 
-    private static QuestLogSnapshot normalizePinned(QuestLogSnapshot source) {
-        var groups = source.groups().stream().map(group -> new QuestLogSnapshot.Group(group.id(), group.title(),
-                group.fileOrder(), group.chapters().stream().map(chapter -> new QuestLogSnapshot.Chapter(
-                        chapter.id(), chapter.groupId(), chapter.title(), chapter.entries().stream()
-                        .map(entry -> new QuestLogSnapshot.Entry(entry.entryId(), entry.questId(), entry.chapterId(),
-                                entry.title(), entry.link(), entry.started(), entry.completed(), entry.canStart(),
-                                entry.progressPercent(), entry.unclaimedRewards(), false, entry.state())).toList()))
-                .toList())).toList();
-        var graphQuests = source.graphQuests().stream().map(quest -> new QuestLogSnapshot.GraphQuest(
-                quest.questId(), quest.chapterId(), quest.groupId(), quest.title(), quest.iconJson(),
-                quest.detailsAvailable(), quest.started(), quest.completed(), quest.canStart(),
-                quest.progressPercent(), quest.unclaimedRewards(), false, quest.stableOrder(),
-                quest.dependencyQuestIds(), quest.dependantQuestIds(), quest.state())).toList();
-        return new QuestLogSnapshot(source.fileGeneration(), source.teamId(), source.pauseGame(), groups,
-                source.chapterHeaders(), source.questHeaders(), source.questDetails(), source.bookTitle(),
-                source.bookIconJson(), graphQuests);
+    private static boolean sameGroupsExceptPinned(List<QuestLogSnapshot.Group> left,
+                                                   List<QuestLogSnapshot.Group> right) {
+        if (left.size() != right.size()) return false;
+        for (int groupIndex = 0; groupIndex < left.size(); groupIndex++) {
+            var a = left.get(groupIndex);
+            var b = right.get(groupIndex);
+            if (a.id() != b.id() || a.fileOrder() != b.fileOrder() || !a.title().equals(b.title())
+                    || a.chapters().size() != b.chapters().size()) return false;
+            for (int chapterIndex = 0; chapterIndex < a.chapters().size(); chapterIndex++) {
+                var leftChapter = a.chapters().get(chapterIndex);
+                var rightChapter = b.chapters().get(chapterIndex);
+                if (leftChapter.id() != rightChapter.id() || leftChapter.groupId() != rightChapter.groupId()
+                        || !leftChapter.title().equals(rightChapter.title())
+                        || !sameEntriesExceptPinned(leftChapter.entries(), rightChapter.entries())) return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean sameEntriesExceptPinned(List<QuestLogSnapshot.Entry> left,
+                                                    List<QuestLogSnapshot.Entry> right) {
+        if (left.size() != right.size()) return false;
+        for (int index = 0; index < left.size(); index++) {
+            var a = left.get(index);
+            var b = right.get(index);
+            if (a.entryId() != b.entryId() || a.questId() != b.questId() || a.chapterId() != b.chapterId()
+                    || !a.title().equals(b.title()) || a.link() != b.link() || a.started() != b.started()
+                    || a.completed() != b.completed() || a.canStart() != b.canStart()
+                    || a.progressPercent() != b.progressPercent() || a.unclaimedRewards() != b.unclaimedRewards()
+                    || a.state() != b.state()) return false;
+        }
+        return true;
+    }
+
+    private static boolean sameGraphQuestsExceptPinned(List<QuestLogSnapshot.GraphQuest> left,
+                                                       List<QuestLogSnapshot.GraphQuest> right) {
+        if (left.size() != right.size()) return false;
+        for (int index = 0; index < left.size(); index++) {
+            var a = left.get(index);
+            var b = right.get(index);
+            if (a.questId() != b.questId() || a.chapterId() != b.chapterId() || a.groupId() != b.groupId()
+                    || !a.title().equals(b.title()) || !a.iconJson().equals(b.iconJson())
+                    || a.detailsAvailable() != b.detailsAvailable() || a.started() != b.started()
+                    || a.completed() != b.completed() || a.canStart() != b.canStart()
+                    || a.progressPercent() != b.progressPercent() || a.unclaimedRewards() != b.unclaimedRewards()
+                    || a.stableOrder() != b.stableOrder() || !a.dependencyQuestIds().equals(b.dependencyQuestIds())
+                    || !a.dependantQuestIds().equals(b.dependantQuestIds()) || a.state() != b.state()) return false;
+        }
+        return true;
     }
 
     private void bindCurrentDocument() {
@@ -768,7 +814,6 @@ public final class PortholeQuestScreen extends ApricityScreen {
         }
         boolean rebindDetail = detailDirty || documentChanged;
         refreshTabs();
-        var visibleGroups = filter.project(snapshot);
         var listGroups = ChapterGroupTabs.select(visibleGroups, effectiveGroup);
         String groupTitle = effectiveGroup.all() ? allGroupTitle() : listGroups.getFirst().title();
         hoverTargets = QuestLogView.render(document, listGroups, groupTitle, filter, expanded, defaultExpanded,
@@ -847,8 +892,21 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private void refreshTabs() {
         Document document = getLinkedDocument();
         if (document == null || document.isDisposed()) return;
-        var next = ChapterGroupTabs.layout(filter.project(snapshot), allGroupTitle(), width, height,
-                document.getViewport().renderScale());
+        double scale = document.getViewport().renderScale();
+        boolean projectionChanged = projectedSnapshot != snapshot || projectedFilter != filter
+                || projectedWidth != width || projectedHeight != height
+                || Double.compare(projectedScale, scale) != 0;
+        if (projectionChanged) {
+            visibleGroups = filter.project(snapshot);
+            projectedSnapshot = snapshot;
+            projectedFilter = filter;
+            projectedWidth = width;
+            projectedHeight = height;
+            projectedScale = scale;
+        }
+        var next = projectionChanged
+                ? ChapterGroupTabs.layout(visibleGroups, allGroupTitle(), width, height, scale)
+                : tabs;
         var selected = ChapterGroupTabs.resolve(requestedGroup, next);
         if (!tabs.equals(next)) {
             tabs = next;
@@ -978,6 +1036,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (detail.kind() != ScreenViewState.Kind.QUEST || detail.questId() != questId || questDetail == null) return;
         descriptionExpanded = value;
         questDetail.setDescriptionExpanded(value);
+        invalidateQuestDetailHover();
         Document document = getLinkedDocument();
         if (document == null || document.isDisposed()) return;
         captureDetailScroll();
@@ -1130,9 +1189,43 @@ public final class PortholeQuestScreen extends ApricityScreen {
         Document document = getLinkedDocument();
         if (listDirty || detailDirty || questDetail == null || document == null || document != boundDocument
                 || !document.isCurrentGeneration(boundGeneration)) return;
-        Position local = document.guiToDocumentPosition(new Position(mouseX, mouseY));
-        var lines = questDetail.tooltipAt(local.x, local.y);
+        var lines = resolveQuestDetailHover(mouseX, mouseY).tooltip();
         if (!lines.isEmpty()) graphics.renderComponentTooltip(font, lines, mouseX, mouseY);
+    }
+
+    private QuestDetailView.HitResult resolveQuestDetailHover(double mouseX, double mouseY) {
+        Document document = getLinkedDocument();
+        if (questDetail == null || detail.kind() != ScreenViewState.Kind.QUEST
+                || listDirty || detailDirty || document == null || document.isDisposed()
+                || document != boundDocument || !document.isCurrentGeneration(boundGeneration)) {
+            questDetailHover = QuestDetailView.HitResult.EMPTY;
+            questDetailHoverBindingVersion = -1;
+            questDetailHoverGeneration = -1;
+            return questDetailHover;
+        }
+        Position local = document.guiToDocumentPosition(new Position(mouseX, mouseY));
+        long generation = document.getRefreshGeneration();
+        if (questDetailHoverBindingVersion == bindingVersion
+                && questDetailHoverGeneration == generation
+                && Double.compare(questDetailHoverX, local.x) == 0
+                && Double.compare(questDetailHoverY, local.y) == 0
+                && Double.compare(questDetailHoverScroll, detailScroll) == 0) return questDetailHover;
+        questDetailHover = questDetail.hitAt(local.x, local.y);
+        questDetailHoverX = local.x;
+        questDetailHoverY = local.y;
+        questDetailHoverBindingVersion = bindingVersion;
+        questDetailHoverGeneration = generation;
+        questDetailHoverScroll = detailScroll;
+        return questDetailHover;
+    }
+
+    private void invalidateQuestDetailHover() {
+        questDetailHover = QuestDetailView.HitResult.EMPTY;
+        questDetailHoverBindingVersion = -1;
+        questDetailHoverGeneration = -1;
+        questDetailHoverX = Double.NaN;
+        questDetailHoverY = Double.NaN;
+        questDetailHoverScroll = Double.NaN;
     }
 
     private void pruneChapterState() {
