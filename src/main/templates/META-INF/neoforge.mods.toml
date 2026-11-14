@@ -96,7 +96,7 @@ config="portholequest.mixins.json"
 [[dependencies.${mod_id}]]
     modId="apricityui"
     type="required"
-    versionRange="[1.2.7,)"
+    versionRange="[1.2.9,)"
     ordering="AFTER"
     side="CLIENT"
 

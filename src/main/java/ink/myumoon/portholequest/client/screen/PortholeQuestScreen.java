@@ -36,6 +36,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import org.lwjgl.glfw.GLFW;
@@ -51,10 +52,23 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public final class PortholeQuestScreen extends ApricityScreen {
-    private static final double BACK_SWATCH_LEFT = 136;
-    private static final double BACK_SWATCH_TOP = 0;
-    private static final double BACK_SWATCH_WIDTH = 32;
-    private static final double BACK_SWATCH_HEIGHT = 8;
+    private static final ResourceLocation MAIN_BACKGROUND = ResourceLocation.fromNamespaceAndPath(
+            PortholeQuest.MODID, "textures/gui/main/porthole_main_normal.png");
+    private static final int BACKGROUND_WIDTH = 360;
+    private static final int BACKGROUND_HEIGHT = 208;
+    private static final int BACKGROUND_LEFT = -12;
+    private static final ResourceLocation DETAIL_CLIP = ResourceLocation.fromNamespaceAndPath(
+            PortholeQuest.MODID, "textures/gui/main/clip_normal.png");
+    private static final int CLIP_WIDTH = 58;
+    private static final int CLIP_HEIGHT = 21;
+    private static final int CLIP_BOTTOM = 12;
+    private static final ResourceLocation BACK_NORMAL = ResourceLocation.fromNamespaceAndPath(
+            PortholeQuest.MODID, "textures/gui/main/metal_trim_normal.png");
+    private static final ResourceLocation BACK_HOVER = ResourceLocation.fromNamespaceAndPath(
+            PortholeQuest.MODID, "textures/gui/main/metal_trim_hover.png");
+    private static final int BACK_SIZE = 28;
+    private static final int BACK_LEFT = 336 - BACK_SIZE;
+    private static final int BACK_TOP = 208 - BACK_SIZE;
     private QuestLogSnapshot snapshot;
     private final ScreenRefreshGuard refreshGuard = new ScreenRefreshGuard();
     private Document boundDocument;
@@ -135,6 +149,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         this.effectiveGroup = this.requestedGroup;
         pruneChapterState();
         setPauseGame(snapshot.pauseGame());
+        setShowDefaultBackground(true);
     }
 
     @Override
@@ -167,15 +182,16 @@ public final class PortholeQuestScreen extends ApricityScreen {
         document.setViewportTransform(scale, scale, frameLeft, frameTop);
     }
 
-    private boolean isFrameBorder(double mouseX, double mouseY) {
+    private boolean isFrameBack(double mouseX, double mouseY) {
         Document document = getLinkedDocument();
         if (document == null || document.isDisposed()) return false;
         updateFrameTransform();
         double scale = document.getViewport().renderScale();
-        double x = (mouseX - frameLeft) / scale;
-        double y = (mouseY - frameTop) / scale;
-        return x >= BACK_SWATCH_LEFT && x < BACK_SWATCH_LEFT + BACK_SWATCH_WIDTH
-                && y >= BACK_SWATCH_TOP && y < BACK_SWATCH_TOP + BACK_SWATCH_HEIGHT;
+        double x = (mouseX - frameLeft) / scale - BACK_LEFT;
+        double y = (mouseY - frameTop) / scale - BACK_TOP;
+        // The metal occupies the lower-right triangle; its diagonal starts at pixel 24.
+        return x >= 0 && x < BACK_SIZE && y >= 0 && y < BACK_SIZE
+                && Math.floor(x) + Math.floor(y) >= BACK_SIZE - 4;
     }
 
     private MouseEvent pointerEvent(String type, double mouseX, double mouseY, int button) {
@@ -259,6 +275,13 @@ public final class PortholeQuestScreen extends ApricityScreen {
             return true;
         }
         if (tryOpenFlowchart(InputConstants.Type.MOUSE.getOrCreate(button))) return true;
+        pressedFrameBack = false;
+        if (button == 0 && isFrameBack(mouseX, mouseY)) {
+            chapterClicks.reset();
+            pressedTab = null;
+            pressedFrameBack = true;
+            return true;
+        }
         if (button == 0 && questDetail != null && detail.kind() == ScreenViewState.Kind.QUEST) {
             Document document = getLinkedDocument();
             if (document != null && !document.isDisposed()) {
@@ -270,15 +293,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
                 }
             }
         }
-        pressedFrameBack = false;
         var tab = tabAt(mouseX, mouseY);
         if (tab != null) {
             chapterClicks.reset();
             if (button == 0) pressedTab = tab;
-            return true;
-        }
-        if (button == 0 && isFrameBorder(mouseX, mouseY)) {
-            pressedFrameBack = true;
             return true;
         }
         return dispatchPointer(pointerEvent("mousedown", mouseX, mouseY, button));
@@ -296,7 +314,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (shortcutRelease) return true;
         if (button == 0 && pressedFrameBack) {
             pressedFrameBack = false;
-            if (isFrameBorder(mouseX, mouseY)) returnFromHistory();
+            if (isFrameBack(mouseX, mouseY)) returnFromHistory();
             return true;
         }
         if (button == 0 && pressedTab != null) {
@@ -360,12 +378,14 @@ public final class PortholeQuestScreen extends ApricityScreen {
         // persistent documents, the cursor, and development overlays stay in screen space.
         FrameTimingHud.beginFrame();
         try {
-            if (isShowDefaultBackground()) renderBackground(graphics, mouseX, mouseY, partialTick);
+            // Match vanilla container screens: dim the world without applying menu blur.
+            if (isShowDefaultBackground()) renderTransparentBackground(graphics);
             Document document = getLinkedDocument();
             float tabScale = document == null ? 1 : document.getViewport().renderScale();
             for (var tab : tabs) if (!tab.selection().equals(effectiveGroup)) {
                 ChapterGroupTabView.draw(graphics, tab, false, frameLeft, frameTop, tabScale);
             }
+            drawJournalBackground(graphics, tabScale);
             graphics.flush();
             if (document != null) {
                 var viewport = document.getViewport();
@@ -408,6 +428,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
             for (var tab : tabs) if (tab.selection().equals(effectiveGroup)) {
                 ChapterGroupTabView.draw(graphics, tab, true, frameLeft, frameTop, tabScale);
             }
+            drawDetailClip(graphics, document, tabScale);
             if (descriptionDialog != null) {
                 graphics.flush();
                 descriptionDialog.draw(graphics, font, frameLeft, frameTop, tabScale, width, height);
@@ -584,17 +605,55 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     public void finishSnapshotRefresh() { refreshGuard.finishRefresh(System.nanoTime()); }
 
+    private void drawJournalBackground(GuiGraphics graphics, float scale) {
+        var pose = graphics.pose();
+        pose.pushPose();
+        try {
+            pose.translate(frameLeft, frameTop, 0);
+            pose.scale(scale, scale, 1);
+            // The authored 360px canvas has 12 transparent pixels on either side
+            // of the 336px body. Keep its paper aligned with the existing DOM.
+            graphics.blit(MAIN_BACKGROUND, BACKGROUND_LEFT, 0, 0, 0,
+                    BACKGROUND_WIDTH, BACKGROUND_HEIGHT, BACKGROUND_WIDTH, BACKGROUND_HEIGHT);
+        } finally {
+            pose.popPose();
+        }
+    }
+
+    private void drawDetailClip(GuiGraphics graphics, Document document, float scale) {
+        if (document == null || document.isDisposed()) return;
+        Element panel = document.querySelector("#detail-panel");
+        if (panel == null) return;
+        var bounds = panel.getBoundingClientRect();
+        if (bounds.width <= 0) return;
+        int left = (int) Math.floor(bounds.left + (bounds.width - CLIP_WIDTH) / 2);
+        var pose = graphics.pose();
+        pose.pushPose();
+        try {
+            // Outside the document clip: the decoration extends 9px above the book.
+            // Follow Detail's actual center without adding a DOM box or input target.
+            pose.translate(frameLeft, frameTop, 325);
+            pose.scale(scale, scale, 1);
+            graphics.blit(DETAIL_CLIP, left, CLIP_BOTTOM - CLIP_HEIGHT, 0, 0,
+                    CLIP_WIDTH, CLIP_HEIGHT, CLIP_WIDTH, CLIP_HEIGHT);
+        } finally {
+            pose.popPose();
+        }
+        graphics.flush();
+    }
+
     private void drawFrameBack(GuiGraphics graphics, double mouseX, double mouseY, float scale) {
-        int left = (int) Math.floor(frameLeft + BACK_SWATCH_LEFT * scale);
-        int top = (int) Math.floor(frameTop + BACK_SWATCH_TOP * scale);
-        int right = (int) Math.ceil(frameLeft + (BACK_SWATCH_LEFT + BACK_SWATCH_WIDTH) * scale);
-        int bottom = (int) Math.ceil(frameTop + (BACK_SWATCH_TOP + BACK_SWATCH_HEIGHT) * scale);
-        int color = pressedFrameBack ? 0xff21877b
-                : isFrameBorder(mouseX, mouseY) ? 0xff65d7c6 : 0xff33b5a4;
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 275);
-        graphics.fill(left, top, right, bottom, color);
-        graphics.pose().popPose();
+        ResourceLocation texture = isFrameBack(mouseX, mouseY) ? BACK_HOVER : BACK_NORMAL;
+        var pose = graphics.pose();
+        pose.pushPose();
+        try {
+            // Above native detail text and selected tabs, below tooltips and modals.
+            pose.translate(frameLeft, frameTop, 350);
+            pose.scale(scale, scale, 1);
+            graphics.blit(texture, BACK_LEFT, BACK_TOP, 0, 0, BACK_SIZE, BACK_SIZE, BACK_SIZE, BACK_SIZE);
+        } finally {
+            pose.popPose();
+        }
         graphics.flush();
     }
 
@@ -923,6 +982,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private ChapterGroupTabs.Slot tabAt(double mouseX, double mouseY) {
         Document document = getLinkedDocument();
         if (document == null || document.isDisposed()) return null;
+        if (isFrameBack(mouseX, mouseY)) return null;
         updateFrameTransform();
         double scale = document.getViewport().renderScale();
         double x = (mouseX - frameLeft) / scale;

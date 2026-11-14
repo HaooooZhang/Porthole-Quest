@@ -13,7 +13,7 @@ body {
     line-height: 9px;
     color: #423027;
 }
-/* 336x208 outer frame, 8px border, 320x192 paper. Integer CSS coordinates. */
+/* The native background supplies the frame and paper. Keep the 8px content inset. */
 #journal-frame {
     position: absolute;
     left: 0;
@@ -21,8 +21,8 @@ body {
     width: 336px;
     height: 208px;
     padding: 0;
-    border: 8px solid #885039;
-    background: #e7d9b7;
+    border: 8px solid transparent;
+    background: transparent;
     overflow: hidden;
 }
 #chapter-list {
@@ -32,7 +32,7 @@ body {
     width: 120px;
     height: 192px;
     overflow: hidden;
-    background: #dac9a4;
+    background: transparent;
 }
 #list-heading {
     position: absolute; left: 0; top: 0; width: 120px; height: 16px;
@@ -97,8 +97,9 @@ body {
 .chapter-detail-row:hover { background: #eee5d0; }
 .chapter-detail-title { word-break: break-all; }
 .chapter-detail-row .row-marker { left: 3px; top: 4px; }
-#detail-footer { position: absolute; left: 0; top: 176px; width: 192px; height: 16px; display: flex; gap: 2px; padding: 2px; overflow: hidden; }
-.detail-action-button { width: 93px; height: 12px; flex: 0 0 93px; border: 1px solid #9a8060; background: #d0bb95; color: #423027; line-height: 10px; text-align: center; overflow: hidden; pointer-events: none; }
+/* Reserve the rightmost 20px of paper for the 28px corner return control. */
+#detail-footer { position: absolute; left: 0; top: 176px; width: 172px; height: 16px; display: flex; gap: 2px; padding: 2px; overflow: hidden; }
+.detail-action-button { width: 83px; height: 12px; flex: 0 0 83px; border: 1px solid #9a8060; background: #d0bb95; color: #423027; line-height: 10px; text-align: center; overflow: hidden; pointer-events: none; }
 .detail-action-button[aria-disabled="true"] { opacity: 0.78; }
 .detail-action-flowchart { pointer-events: auto; cursor: pointer; }
 .quest-task-action[aria-disabled="false"], .quest-reward-card[aria-disabled="false"], .detail-action-track[aria-disabled="false"] { pointer-events: auto; cursor: pointer; }
