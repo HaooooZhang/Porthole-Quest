@@ -24,8 +24,9 @@ public final class ChapterGroupTabs {
         int index = 0;
         for (Edge edge : Edge.values()) {
             boolean side = edge == Edge.LEFT || edge == Edge.RIGHT;
-            int length = side ? 208 : 336;
-            for (int offset = 16; offset + 24 <= length && index <= groups.size(); offset += 24) {
+            int capacity = side ? 7 : 4;
+            for (int slotIndex = 0; slotIndex < capacity && index <= groups.size(); slotIndex++) {
+                int offset = 16 + slotIndex * 24;
                 int x = switch (edge) { case LEFT -> -24; case RIGHT -> 328; default -> offset; };
                 int y = switch (edge) { case TOP -> -24; case BOTTOM -> 200; default -> offset; };
                 int w = edge == Edge.LEFT || edge == Edge.RIGHT ? 32 : 24;

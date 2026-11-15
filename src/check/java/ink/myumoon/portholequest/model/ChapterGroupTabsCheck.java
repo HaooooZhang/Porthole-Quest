@@ -28,27 +28,42 @@ public final class ChapterGroupTabsCheck {
         var empty = ChapterGroupTabs.layout(List.of(), "All", 427, 240, 1);
         check(empty.size() == 1 && empty.getFirst().selection().all(), "Empty needs ALL");
         var small = ChapterGroupTabs.layout(groups, "All", 427, 240, 1);
-        check(small.size() == 16, "Small window left/right capacity");
-        check(small.get(7).edge() == ChapterGroupTabs.Edge.LEFT
-                && small.get(8).edge() == ChapterGroupTabs.Edge.RIGHT, "Small window skip top/bottom");
+        check(small.size() == 14, "Small window left/right capacity");
+        check(small.get(6).edge() == ChapterGroupTabs.Edge.LEFT
+                && small.get(7).edge() == ChapterGroupTabs.Edge.RIGHT, "Small window skip top/bottom");
         for (int[] window : List.of(new int[]{360, 208, 1}, new int[]{320, 180, 1}, new int[]{720, 416, 2})) {
             var clipped = ChapterGroupTabs.layout(groups, "All", window[0], window[1], window[2]);
-            check(clipped.size() == 16 && clipped.getFirst().selection().all(), "Clipped window retains ALL and side capacity");
+            check(clipped.size() == 14 && clipped.getFirst().selection().all(), "Clipped window retains ALL and side capacity");
             for (int i = 0; i < clipped.size(); i++) {
-                check(clipped.get(i).edge() == (i < 8 ? ChapterGroupTabs.Edge.LEFT : ChapterGroupTabs.Edge.RIGHT),
+                check(clipped.get(i).edge() == (i < 7 ? ChapterGroupTabs.Edge.LEFT : ChapterGroupTabs.Edge.RIGHT),
                         "Clipped window retains left/right order");
                 check(clipped.get(i).selection().equals(small.get(i).selection()), "Side identities stable on resize");
             }
-            check(ChapterGroupTabs.resolve(GroupSelection.group(14), clipped).equals(GroupSelection.group(14)),
+            check(ChapterGroupTabs.resolve(GroupSelection.group(12), clipped).equals(GroupSelection.group(12)),
                     "Clipped right tab keeps selection");
             check(ChapterGroupTabs.layout(List.of(group(0, true)), "All", window[0], window[1], window[2]).size() == 2,
                     "Clipped window retains default group tab");
         }
         var large = ChapterGroupTabs.layout(groups, "All", 480, 270, 1);
-        check(large.size() == 42, "Four edge capacity");
-        check(large.get(8).edge() == ChapterGroupTabs.Edge.BOTTOM
-                && large.get(21).edge() == ChapterGroupTabs.Edge.TOP
-                && large.get(34).edge() == ChapterGroupTabs.Edge.RIGHT, "Remaining edge order");
+        check(large.size() == 22, "Four edge capacity includes ALL");
+        check(large.get(7).edge() == ChapterGroupTabs.Edge.BOTTOM
+                && large.get(11).edge() == ChapterGroupTabs.Edge.TOP
+                && large.get(15).edge() == ChapterGroupTabs.Edge.RIGHT, "Remaining edge order");
+        for (int i = 0; i < large.size(); i++) {
+            var slot = large.get(i);
+            var edge = i < 7 ? ChapterGroupTabs.Edge.LEFT : i < 11 ? ChapterGroupTabs.Edge.BOTTOM
+                    : i < 15 ? ChapterGroupTabs.Edge.TOP : ChapterGroupTabs.Edge.RIGHT;
+            int first = i < 7 ? 0 : i < 11 ? 7 : i < 15 ? 11 : 15;
+            check(slot.edge() == edge, "Every edge obeys its capacity");
+            int offset = 16 + (i - first) * 24;
+            boolean side = edge == ChapterGroupTabs.Edge.LEFT || edge == ChapterGroupTabs.Edge.RIGHT;
+            check((side ? slot.y() : slot.x()) == offset, "Tabs start at 16px with 24px spacing");
+            check(slot.selection().equals(i == 0 ? GroupSelection.ALL : GroupSelection.group(i - 1)),
+                    "Every placed identity follows file order across edges");
+        }
+        check(ChapterGroupTabs.resolve(GroupSelection.group(20), large).equals(GroupSelection.group(20)),
+                "Last of 21 group tabs remains selectable");
+        check(ChapterGroupTabs.resolve(GroupSelection.group(21), large).all(), "Capacity overflow falls back to ALL");
         check(large.get(0).color() == -1 && large.get(1).color() == 0 && large.get(7).color() == 0,
                 "ALL excluded from color cycle");
         for (int i = 2; i < large.size(); i++) check(large.get(i - 1).color() != large.get(i).color(), "Adjacent colors");
