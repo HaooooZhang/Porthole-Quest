@@ -67,8 +67,8 @@ public final class PortholeQuestScreen extends ApricityScreen {
     private static final ResourceLocation BACK_HOVER = ResourceLocation.fromNamespaceAndPath(
             PortholeQuest.MODID, "textures/gui/main/metal_trim_hover.png");
     private static final int BACK_SIZE = 28;
-    private static final int BACK_LEFT = 336 - BACK_SIZE;
-    private static final int BACK_TOP = 208 - BACK_SIZE;
+    private static final int BACK_LEFT = 336 - BACK_SIZE + 1;
+    private static final int BACK_TOP = 208 - BACK_SIZE + 1;
     private QuestLogSnapshot snapshot;
     private final ScreenRefreshGuard refreshGuard = new ScreenRefreshGuard();
     private Document boundDocument;
