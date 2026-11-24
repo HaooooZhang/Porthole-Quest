@@ -14,6 +14,7 @@ import com.sighs.apricityui.style.Cursor;
 import com.mojang.blaze3d.platform.InputConstants;
 import ink.myumoon.portholequest.PortholeQuest;
 import ink.myumoon.portholequest.client.ui.QuestLogView;
+import ink.myumoon.portholequest.client.ui.JournalSounds;
 import ink.myumoon.portholequest.client.ui.ChapterGroupTabView;
 import ink.myumoon.portholequest.client.ui.DetailHeaderView;
 import ink.myumoon.portholequest.client.ui.ChapterDetailView;
@@ -254,6 +255,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
                     mouseX, mouseY, button, frameLeft, frameTop, scale);
             if (result.kind() == QuestFlowchartDialog.ClickKind.CLOSE) {
                 flowchartDialog = null;
+                JournalSounds.click();
             } else if (result.kind() == QuestFlowchartDialog.ClickKind.OPEN_QUEST) {
                 QuestLogSnapshot.Entry entry = findQuestEntry(result.questId());
                 flowchartDialog = null;
@@ -267,6 +269,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
                     mouseX, mouseY, button, frameLeft, frameTop, scale);
             if (result == DescriptionDialog.ClickResult.CLOSE) {
                 descriptionDialog = null;
+                JournalSounds.click();
             } else if (result == DescriptionDialog.ClickResult.NONE && button == 0) {
                 Style style = descriptionDialog.styleAt(mouseX, mouseY, frameLeft, frameTop, scale);
                 if (style != null) handleDescriptionClick(style);
@@ -497,7 +500,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (flowchartDialog != null) {
-            if (keyCode == GLFW.GLFW_KEY_ESCAPE) flowchartDialog = null;
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                flowchartDialog = null;
+                JournalSounds.click();
+            }
             else switch (keyCode) {
                 case GLFW.GLFW_KEY_LEFT -> flowchartDialog.move(-1, 0);
                 case GLFW.GLFW_KEY_RIGHT -> flowchartDialog.move(1, 0);
@@ -510,6 +516,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (descriptionDialog != null) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 descriptionDialog = null;
+                JournalSounds.click();
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_PAGE_UP) {
@@ -997,7 +1004,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
         // Clicking ALL during fallback intentionally replaces the remembered preference.
         if (requestedGroup.equals(group)) return;
         requestedGroup = group;
-        if (!effectiveGroup.equals(group)) listScroll = 0;
+        if (!effectiveGroup.equals(group)) {
+            listScroll = 0;
+            JournalSounds.tab();
+        }
         listDirty = true;
     }
 
@@ -1006,6 +1016,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (filter == mode) return;
         captureDetailScroll();
         filter = mode;
+        JournalSounds.click();
         pruneDetailHistory();
         chapterDetailDirty = detail.kind() == ScreenViewState.Kind.CHAPTER;
         listScroll = 0;
@@ -1016,6 +1027,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         captureListScroll();
         captureDetailScroll();
         expanded.put(chapterId, !expanded.getOrDefault(chapterId, defaultExpanded));
+        JournalSounds.click();
         // Rebuild next tick, after AUI has finished the click event and its followups.
         listDirty = true;
     }
@@ -1045,6 +1057,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         } else return;
         long graphNanos = System.nanoTime() - started;
         flowchartDialog = new QuestFlowchartDialog(graph, chapterQuestIds(snapshot, detail.chapterId()));
+        JournalSounds.click();
         refreshGuard.viewChanged();
         long replayStarted = System.nanoTime();
         QuestFlowchartDebug.capture(snapshot, detail.chapterId(), graph);
@@ -1081,6 +1094,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         if (quest != null && !quest.descriptionHidden()) {
             QuestLogSnapshot.Entry entry = findQuestEntry(questId);
             descriptionDialog = new DescriptionDialog(questId, entry == null ? "" : entry.title(), quest.description());
+            JournalSounds.paper();
             refreshGuard.viewChanged();
         }
     }
@@ -1094,8 +1108,10 @@ public final class PortholeQuestScreen extends ApricityScreen {
 
     private void setDescriptionExpanded(long questId, boolean value) {
         if (detail.kind() != ScreenViewState.Kind.QUEST || detail.questId() != questId || questDetail == null) return;
+        if (descriptionExpanded == value) return;
         descriptionExpanded = value;
         questDetail.setDescriptionExpanded(value);
+        JournalSounds.click();
         invalidateQuestDetailHover();
         Document document = getLinkedDocument();
         if (document == null || document.isDisposed()) return;
@@ -1175,6 +1191,7 @@ public final class PortholeQuestScreen extends ApricityScreen {
         detailHistory.push(detail, detailScroll, descriptionExpanded, pendingDescriptionReturn);
         pendingDescriptionReturn = null;
         detail = next;
+        JournalSounds.paper();
         detailScroll = 0;
         descriptionExpanded = false;
         detailDirty = true;
@@ -1190,7 +1207,14 @@ public final class PortholeQuestScreen extends ApricityScreen {
         chapterClicks.reset();
         captureListScroll();
         captureDetailScroll();
+        ScreenViewState previousDetail = detail;
+        double previousScroll = detailScroll;
+        boolean previousExpanded = descriptionExpanded;
         restorePreviousDetail();
+        if (!detail.equals(previousDetail) || Double.compare(detailScroll, previousScroll) != 0
+                || descriptionExpanded != previousExpanded || descriptionDialog != null) {
+            JournalSounds.paper();
+        }
     }
 
     private void restorePreviousDetail() {

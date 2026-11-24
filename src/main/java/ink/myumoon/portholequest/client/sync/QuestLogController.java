@@ -3,6 +3,7 @@ package ink.myumoon.portholequest.client.sync;
 import ink.myumoon.portholequest.PortholeQuest;
 import ink.myumoon.portholequest.client.input.PortholeKeyMappings;
 import ink.myumoon.portholequest.client.screen.PortholeQuestScreen;
+import ink.myumoon.portholequest.client.ui.JournalSounds;
 import ink.myumoon.portholequest.client.session.GuiSessionCache;
 import ink.myumoon.portholequest.client.sync.QuestAction;
 import ink.myumoon.portholequest.event.QuestJournalOpenEvent;
@@ -65,8 +66,11 @@ public final class QuestLogController {
             PortholeQuest.LOGGER.error("[PortholeQuest R4] Journal open failed", exception);
             if (screen != null && minecraft.screen == screen) minecraft.setScreen(null);
             var player = minecraft.player;
-            if (player != null) player.displayClientMessage(
-                    net.minecraft.network.chat.Component.translatable("message.portholequest.open_failed"), true);
+            if (player != null) {
+                player.displayClientMessage(
+                        net.minecraft.network.chat.Component.translatable("message.portholequest.open_failed"), true);
+                JournalSounds.error();
+            }
         }
     }
 

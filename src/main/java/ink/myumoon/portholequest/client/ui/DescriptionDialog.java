@@ -87,6 +87,7 @@ public final class DescriptionDialog {
             scroll = 0;
             hoveredStyle = null;
             preparePage(Minecraft.getInstance().font);
+            JournalSounds.paper();
         }
     }
 

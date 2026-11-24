@@ -3,6 +3,7 @@ package ink.myumoon.portholequest.client.sync;
 import ink.myumoon.portholequest.Config;
 import ink.myumoon.portholequest.PortholeQuest;
 import ink.myumoon.portholequest.client.screen.PortholeQuestScreen;
+import ink.myumoon.portholequest.client.ui.JournalSounds;
 import ink.myumoon.portholequest.client.session.GuiSessionCache;
 import ink.myumoon.portholequest.ftbq.FtbqBridge;
 import ink.myumoon.portholequest.model.QuestLogReadResult;
@@ -116,6 +117,7 @@ public final class QuestLogRefreshCoordinator {
         try {
             actionDispatcher.send(action);
             screen.setPendingActions(pendingActions.actions());
+            JournalSounds.click();
         } catch (RuntimeException exception) {
             pendingActions.remove(action);
             screen.setPendingActions(pendingActions.actions());
@@ -248,7 +250,10 @@ public final class QuestLogRefreshCoordinator {
 
     private static void feedback(String key) {
         var player = Minecraft.getInstance().player;
-        if (player != null) player.displayClientMessage(Component.translatable(key), true);
+        if (player != null) {
+            player.displayClientMessage(Component.translatable(key), true);
+            if (Minecraft.getInstance().screen instanceof PortholeQuestScreen) JournalSounds.error();
+        }
     }
 
     private static void unavailable(QuestLogReadResult.State state, String source) {
@@ -261,7 +266,10 @@ public final class QuestLogRefreshCoordinator {
             default -> throw new IllegalArgumentException("Unexpected unavailable state: " + state);
         };
         var player = Minecraft.getInstance().player;
-        if (player != null) player.displayClientMessage(Component.translatable(key), true);
+        if (player != null) {
+            player.displayClientMessage(Component.translatable(key), true);
+            if (source.equals("item") || source.equals("key")) JournalSounds.error();
+        }
     }
 
     private static void fail(Minecraft minecraft, PortholeQuestScreen screen, RuntimeException exception) {
